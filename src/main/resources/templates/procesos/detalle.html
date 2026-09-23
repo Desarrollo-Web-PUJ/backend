@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Detalle del proceso</title></head>
+<body>
+<h1 th:text="${proceso.nombre}"></h1>
+
+<p><strong>Descripción:</strong> <span th:text="${proceso.descripcion}"></span></p>
+<p><strong>Categoría:</strong> <span th:text="${proceso.categoria}"></span></p>
+<p><strong>Estado:</strong> <span th:text="${proceso.estado}"></span></p>
+<p><strong>Activo:</strong> <span th:text="${proceso.activo} ? 'Sí' : 'No'"></span></p>
+
+<a th:href="@{/procesos/{id}/editar(id=${proceso.id})}">Editar</a>
+|
+<a th:href="@{/procesos/{id}/historial(id=${proceso.id})}">Ver historial</a>
+|
+<a th:href="@{/procesos}">Volver al listado</a>
+
+<hr/>
+<h2>Lanes</h2>
+<ul>
+    <li th:each="l : ${proceso.lanes}" th:text="${l.nombre}"></li>
+</ul>
+
+<hr/>
+<h2>Actividades</h2>
+<a th:href="@{/procesos/{id}/actividades(id=${proceso.id})}">Ver / gestionar actividades</a>
+<table border="1">
+    <tr><th>Nombre</th><th>Tipo</th><th>Lane</th><th>Posición</th></tr>
+    <tr th:each="a : ${proceso.actividades}">
+        <td th:text="${a.nombre}"></td>
+        <td th:text="${a.tipo}"></td>
+        <td th:text="${a.laneNombre}"></td>
+        <td th:text="${a.posicionX} + ', ' + ${a.posicionY}"></td>
+    </tr>
+</table>
+
+<!-- TODO: cuando exista la entidad Arco, agregar aqui la lista de arcos del diagrama (HU-07) -->
+</body>
+</html>

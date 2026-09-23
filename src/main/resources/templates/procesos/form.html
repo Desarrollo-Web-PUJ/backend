@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Nuevo proceso</title></head>
+<body>
+<h1>Crear proceso</h1>
+
+<p th:if="${error}" th:text="${error}" style="color:red;"></p>
+
+<form th:action="@{/procesos}" th:object="${proceso}" method="post">
+    <label>Nombre:</label>
+    <input type="text" th:field="*{nombre}" required/><br/>
+
+    <label>Descripción:</label>
+    <textarea th:field="*{descripcion}"></textarea><br/>
+
+    <label>Categoría:</label>
+    <input type="text" th:field="*{categoria}" required/><br/>
+
+    <button type="submit">Guardar</button>
+</form>
+
+<a th:href="@{/procesos}">Volver al listado</a>
+</body>
+</html>
