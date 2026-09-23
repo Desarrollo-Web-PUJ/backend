@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Actividades del proceso</title></head>
+<body>
+<h1>Actividades</h1>
+<p th:if="${mensaje}" th:text="${mensaje}" style="color:green;"></p>
+
+<a th:href="@{/procesos/{id}/actividades/nueva(id=${procesoId})}">+ Nueva actividad</a>
+
+<table border="1">
+    <tr><th>Nombre</th><th>Tipo</th><th>Lane</th><th>Posición</th></tr>
+    <tr th:each="a : ${actividades}">
+        <td th:text="${a.nombre}"></td>
+        <td th:text="${a.tipo}"></td>
+        <td th:text="${a.laneNombre}"></td>
+        <td th:text="${a.posicionX} + ', ' + ${a.posicionY}"></td>
+    </tr>
+</table>
+</body>
+</html>

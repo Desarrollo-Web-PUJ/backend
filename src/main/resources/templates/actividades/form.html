@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Nueva actividad</title></head>
+<body>
+<h1>Crear actividad</h1>
+
+<p th:if="${error}" th:text="${error}" style="color:red;"></p>
+
+<form th:action="@{/procesos/{id}/actividades(id=${procesoId})}" th:object="${actividad}" method="post">
+    <label>Nombre:</label>
+    <input type="text" th:field="*{nombre}" required /><br/>
+
+    <label>Tipo:</label>
+    <select th:field="*{tipo}">
+        <option th:each="t : ${tipos}" th:value="${t}" th:text="${t}"></option>
+    </select><br/>
+
+    <label>Lane (rol responsable):</label>
+    <select th:field="*{laneId}">
+        <option th:each="l : ${lanes}" th:value="${l.id}" th:text="${l.nombre}"></option>
+    </select><br/>
+
+    <label>Posición X:</label>
+    <input type="number" th:field="*{posicionX}" step="any" /><br/>
+
+    <label>Posición Y:</label>
+    <input type="number" th:field="*{posicionY}" step="any" /><br/>
+
+    <button type="submit">Guardar</button>
+</form>
+
+<hr/>
+<h3>¿No existe la lane que necesitas?</h3>
+<form th:action="@{/procesos/{id}/actividades/lanes(id=${procesoId})}" method="post">
+    <input type="text" name="nombreLane" placeholder="Nombre de la lane" required/>
+    <button type="submit">Crear lane</button>
+</form>
+</body>
+</html>
