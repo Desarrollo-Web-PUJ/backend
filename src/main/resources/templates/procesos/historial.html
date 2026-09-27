@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Historial del proceso</title></head>
+<body>
+<h1>Historial de cambios</h1>
+
+<table border="1">
+    <tr><th>Fecha</th><th>Descripción</th></tr>
+    <tr th:each="h : ${historial}">
+        <td th:text="${#temporals.format(h.fecha, 'dd/MM/yyyy HH:mm')}"></td>
+        <td th:text="${h.descripcion}"></td>
+    </tr>
+</table>
+
+<a th:href="@{/procesos/{id}(id=${procesoId})}">Volver al proceso</a>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Procesos</title></head>
+<body>
+<h1>Procesos</h1>
+
+<p th:if="${mensaje}" th:text="${mensaje}" style="color:green;"></p>
+<p th:if="${error}" th:text="${error}" style="color:red;"></p>
+
+<a th:href="@{/procesos/nuevo}">+ Nuevo proceso</a>
+
+<hr/>
+<form th:action="@{/procesos}" method="get">
+    <label>Nombre:</label>
+    <input type="text" name="nombre" th:value="${nombre}" placeholder="Buscar por nombre"/>
+
+    <label>Estado:</label>
+    <select name="estado">
+        <option value="">-- Todos --</option>
+        <option th:each="e : ${estados}" th:value="${e}" th:text="${e}" th:selected="${e == estado}"></option>
+    </select>
+
+    <label>Categoría:</label>
+    <input type="text" name="categoria" th:value="${categoria}" placeholder="Categoría"/>
+
+    <label>
+        <input type="checkbox" name="incluirInactivos" value="true" th:checked="${incluirInactivos}"/>
+        Incluir inactivos
+    </label>
+
+    <button type="submit">Filtrar</button>
+</form>
+<hr/>
+
+<table border="1">
+    <tr>
+        <th>Nombre</th>
+        <th>Categoría</th>
+        <th>Estado</th>
+        <th>Activo</th>
+        <th>Acciones</th>
+    </tr>
+    <tr th:each="p : ${procesos.content}">
+        <td th:text="${p.nombre}"></td>
+        <td th:text="${p.categoria}"></td>
+        <td th:text="${p.estado}"></td>
+        <td th:text="${p.activo} ? 'Sí' : 'No'"></td>
+        <td>
+            <a th:href="@{/procesos/{id}(id=${p.id})}">Ver</a>
+            |
+            <a th:href="@{/procesos/{id}/editar(id=${p.id})}">Editar</a>
+            |
+            <form th:action="@{/procesos/{id}/eliminar(id=${p.id})}" method="post"
+                  style="display:inline;" onsubmit="return confirm('¿Eliminar este proceso?');">
+                <button type="submit">Eliminar</button>
+            </form>
+        </td>
+    </tr>
+</table>
+
+<div th:if="${procesos.totalPages > 1}">
+    <span th:each="i : ${#numbers.sequence(0, procesos.totalPages - 1)}">
+        <a th:href="@{/procesos(page=${i}, nombre=${nombre}, estado=${estado}, categoria=${categoria}, incluirInactivos=${incluirInactivos})}"
+           th:text="${i + 1}"></a>
+    </span>
+</div>
+</body>
+</html>
