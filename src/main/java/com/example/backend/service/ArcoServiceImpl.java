@@ -1,0 +1,365 @@
+package com.example.backend.service;
+
+import com.example.backend.dto.ArcoRequestDTO;
+import com.example.backend.dto.ArcoResponseDTO;
+import com.example.backend.dto.EliminacionArcoResponseDTO;
+import com.example.backend.entity.*;
+import com.example.backend.exception.AccesoDenegadoException;
+import com.example.backend.exception.OperacionInvalidaException;
+import com.example.backend.exception.RecursoDuplicadoException;
+import com.example.backend.exception.RecursoNoEncontradoException;
+import com.example.backend.repository.ActividadRepository;
+import com.example.backend.repository.ArcoRepository;
+import com.example.backend.repository.HistorialProcesoRepository;
+import com.example.backend.repository.ProcesoRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class ArcoServiceImpl implements ArcoService {
+
+    private final ArcoRepository arcoRepository;
+    private final ProcesoRepository procesoRepository;
+    private final ActividadRepository actividadRepository;
+    private final HistorialProcesoRepository historialProcesoRepository;
+
+    public ArcoServiceImpl(
+            ArcoRepository arcoRepository,
+            ProcesoRepository procesoRepository,
+            ActividadRepository actividadRepository,
+            HistorialProcesoRepository historialProcesoRepository) {
+
+        this.arcoRepository = arcoRepository;
+        this.procesoRepository = procesoRepository;
+        this.actividadRepository = actividadRepository;
+        this.historialProcesoRepository = historialProcesoRepository;
+    }
+
+    @Override
+    @Transactional
+    public ArcoResponseDTO crearArco(
+            Long procesoId,
+            ArcoRequestDTO request,
+            Long empresaId,
+            RolUsuario rol) {
+
+        validarPermisoEdicion(rol);
+
+        Proceso proceso = obtenerProceso(procesoId, empresaId);
+
+        validarArco(
+                procesoId,
+                request,
+                null
+        );
+
+        Arco arco = new Arco();
+
+        arco.setProceso(proceso);
+        arco.setTipoOrigen(request.getTipoOrigen());
+        arco.setOrigenId(request.getOrigenId());
+        arco.setTipoDestino(request.getTipoDestino());
+        arco.setDestinoId(request.getDestinoId());
+        arco.setEtiqueta(request.getEtiqueta());
+
+        if (request.getTipoOrigen() == TipoNodo.GATEWAY) {
+            arco.setCondicion(request.getCondicion());
+        } else {
+            arco.setCondicion(null);
+        }
+
+        arco = arcoRepository.save(arco);
+
+        historialProcesoRepository.save(
+                new HistorialProceso(
+                        proceso,
+                        "Se creó el arco #" + arco.getId()
+                                + " desde " + arco.getTipoOrigen()
+                                + " " + arco.getOrigenId()
+                                + " hacia " + arco.getTipoDestino()
+                                + " " + arco.getDestinoId(),
+                        LocalDateTime.now()
+                )
+        );
+
+        return convertirDTO(arco);
+    }
+
+    @Override
+    @Transactional
+    public ArcoResponseDTO editarArco(
+            Long procesoId,
+            Long arcoId,
+            ArcoRequestDTO request,
+            Long empresaId,
+            RolUsuario rol) {
+
+        validarPermisoEdicion(rol);
+
+        Proceso proceso = obtenerProceso(procesoId, empresaId);
+
+        Arco arco = arcoRepository
+                .findByIdAndProcesoId(arcoId, procesoId)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "No existe el arco indicado en este proceso"
+                        )
+                );
+
+        validarArco(
+                procesoId,
+                request,
+                arcoId
+        );
+
+        arco.setTipoOrigen(request.getTipoOrigen());
+        arco.setOrigenId(request.getOrigenId());
+        arco.setTipoDestino(request.getTipoDestino());
+        arco.setDestinoId(request.getDestinoId());
+        arco.setEtiqueta(request.getEtiqueta());
+
+        if (request.getTipoOrigen() == TipoNodo.GATEWAY) {
+            arco.setCondicion(request.getCondicion());
+        } else {
+            arco.setCondicion(null);
+        }
+
+        arco = arcoRepository.save(arco);
+
+        historialProcesoRepository.save(
+                new HistorialProceso(
+                        proceso,
+                        "Se editó el arco #" + arco.getId(),
+                        LocalDateTime.now()
+                )
+        );
+
+        return convertirDTO(arco);
+    }
+
+    @Override
+    @Transactional
+    public EliminacionArcoResponseDTO eliminarArco(
+            Long procesoId,
+            Long arcoId,
+            Long empresaId,
+            RolUsuario rol) {
+
+        if (rol != RolUsuario.ADMINISTRADOR) {
+            throw new AccesoDenegadoException(
+                    "Solo un administrador puede eliminar arcos"
+            );
+        }
+
+        Proceso proceso = obtenerProceso(procesoId, empresaId);
+
+        Arco arco = arcoRepository
+                .findByIdAndProcesoId(arcoId, procesoId)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "No existe el arco indicado en este proceso"
+                        )
+                );
+
+        List<String> advertencias = new ArrayList<>();
+
+        long salidasOrigen =
+                arcoRepository.countByProcesoIdAndTipoOrigenAndOrigenId(
+                        procesoId,
+                        arco.getTipoOrigen(),
+                        arco.getOrigenId()
+                );
+
+        long entradasDestino =
+                arcoRepository.countByProcesoIdAndTipoDestinoAndDestinoId(
+                        procesoId,
+                        arco.getTipoDestino(),
+                        arco.getDestinoId()
+                );
+
+        if (salidasOrigen == 1) {
+            advertencias.add(
+                    "El nodo de origen quedará sin camino de salida"
+            );
+        }
+
+        if (entradasDestino == 1) {
+            advertencias.add(
+                    "El nodo de destino quedará sin camino de entrada"
+            );
+        }
+
+        String descripcion =
+                "Se eliminó el arco #" + arco.getId()
+                        + " desde " + arco.getTipoOrigen()
+                        + " " + arco.getOrigenId()
+                        + " hacia " + arco.getTipoDestino()
+                        + " " + arco.getDestinoId();
+
+        arcoRepository.delete(arco);
+
+        historialProcesoRepository.save(
+                new HistorialProceso(
+                        proceso,
+                        descripcion,
+                        LocalDateTime.now()
+                )
+        );
+
+        return new EliminacionArcoResponseDTO(
+                "Arco eliminado correctamente",
+                advertencias
+        );
+    }
+
+    private void validarArco(
+            Long procesoId,
+            ArcoRequestDTO request,
+            Long arcoIdActual) {
+
+        if (request.getTipoOrigen() == request.getTipoDestino()
+                && request.getOrigenId().equals(request.getDestinoId())) {
+
+            throw new OperacionInvalidaException(
+                    "El origen y el destino no pueden ser el mismo nodo"
+            );
+        }
+
+        validarNodo(
+                request.getTipoOrigen(),
+                request.getOrigenId(),
+                procesoId
+        );
+
+        validarNodo(
+                request.getTipoDestino(),
+                request.getDestinoId(),
+                procesoId
+        );
+
+        boolean duplicado;
+
+        if (arcoIdActual == null) {
+
+            duplicado =
+                    arcoRepository
+                            .existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoId(
+                                    procesoId,
+                                    request.getTipoOrigen(),
+                                    request.getOrigenId(),
+                                    request.getTipoDestino(),
+                                    request.getDestinoId()
+                            );
+
+        } else {
+
+            duplicado =
+                    arcoRepository
+                            .existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoIdAndIdNot(
+                                    procesoId,
+                                    request.getTipoOrigen(),
+                                    request.getOrigenId(),
+                                    request.getTipoDestino(),
+                                    request.getDestinoId(),
+                                    arcoIdActual
+                            );
+        }
+
+        if (duplicado) {
+            throw new RecursoDuplicadoException(
+                    "Ya existe un arco entre esos dos nodos"
+            );
+        }
+    }
+
+    private void validarNodo(
+            TipoNodo tipoNodo,
+            Long nodoId,
+            Long procesoId) {
+
+        if (tipoNodo == TipoNodo.ACTIVIDAD) {
+
+            Actividad actividad = actividadRepository
+                    .findById(nodoId)
+                    .orElseThrow(() ->
+                            new RecursoNoEncontradoException(
+                                    "La actividad " + nodoId + " no existe"
+                            )
+                    );
+
+            if (!actividad.getProceso().getId().equals(procesoId)) {
+                throw new OperacionInvalidaException(
+                        "La actividad no pertenece al proceso indicado"
+                );
+            }
+
+            return;
+        }
+
+        if (tipoNodo == TipoNodo.GATEWAY) {
+            throw new OperacionInvalidaException(
+                    "La validación de gateways quedará disponible al integrar la entidad Gateway"
+            );
+        }
+
+        if (tipoNodo == TipoNodo.EVENTO) {
+            throw new OperacionInvalidaException(
+                    "La validación de eventos quedará disponible al integrar la entidad Evento"
+            );
+        }
+    }
+
+    private Proceso obtenerProceso(
+            Long procesoId,
+            Long empresaId) {
+
+        Proceso proceso = procesoRepository.findById(procesoId)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "El proceso no existe"
+                        )
+                );
+
+        if (!proceso.getEmpresa().getId().equals(empresaId)) {
+            throw new AccesoDenegadoException(
+                    "No tiene acceso a este proceso"
+            );
+        }
+
+        return proceso;
+    }
+
+    private void validarPermisoEdicion(RolUsuario rol) {
+
+        if (rol != RolUsuario.ADMINISTRADOR
+                && rol != RolUsuario.EDITOR) {
+
+            throw new AccesoDenegadoException(
+                    "El usuario no tiene permisos de edición"
+            );
+        }
+    }
+
+    private ArcoResponseDTO convertirDTO(Arco arco) {
+
+        ArcoResponseDTO dto = new ArcoResponseDTO();
+
+        dto.setId(arco.getId());
+        dto.setProcesoId(arco.getProceso().getId());
+
+        dto.setTipoOrigen(arco.getTipoOrigen());
+        dto.setOrigenId(arco.getOrigenId());
+
+        dto.setTipoDestino(arco.getTipoDestino());
+        dto.setDestinoId(arco.getDestinoId());
+
+        dto.setEtiqueta(arco.getEtiqueta());
+        dto.setCondicion(arco.getCondicion());
+
+        return dto;
+    }
+}

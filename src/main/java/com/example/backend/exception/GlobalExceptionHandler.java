@@ -46,4 +46,23 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errores);
     }
+    @ExceptionHandler(OperacionInvalidaException.class)
+    public ResponseEntity<Map<String, String>> manejarOperacionInvalida(
+        OperacionInvalidaException ex) {
+
+    Map<String, String> error = new HashMap<>();
+    error.put("mensaje", ex.getMessage());
+
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+}
+
+    @ExceptionHandler(AccesoDenegadoException.class)
+    public ResponseEntity<Map<String, String>> manejarAccesoDenegado(
+        AccesoDenegadoException ex) {
+
+    Map<String, String> error = new HashMap<>();
+    error.put("mensaje", ex.getMessage());
+
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+}
 }
