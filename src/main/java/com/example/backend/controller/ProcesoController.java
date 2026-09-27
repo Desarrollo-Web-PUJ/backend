@@ -1,21 +1,27 @@
 package com.example.backend.controller;
 
+import com.example.backend.dto.HistorialProcesoDTO;
 import com.example.backend.dto.ProcesoCrearRequestDTO;
+import com.example.backend.dto.ProcesoDetalleDTO;
 import com.example.backend.dto.ProcesoEditarRequestDTO;
+import com.example.backend.dto.ProcesoListItemDTO;
+import com.example.backend.dto.ProcesoResponseDTO;
 import com.example.backend.entity.EstadoProceso;
 import com.example.backend.entity.RolUsuario;
-import com.example.backend.exception.PermisoDenegadoException;
 import com.example.backend.service.ProcesoService;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.List;
 
 @Controller
-@RequestMapping("/procesos")
+@RequestMapping("/api/procesos")
 public class ProcesoController {
 
     private final ProcesoService procesoService;
@@ -24,142 +30,159 @@ public class ProcesoController {
         this.procesoService = procesoService;
     }
 
-    private Long usuarioIdSesion(HttpSession session) {
+    private Long obtenerUsuarioId(HttpSession session) {
         return (Long) session.getAttribute("usuarioId");
     }
 
-    private Long empresaIdSesion(HttpSession session) {
+    private Long obtenerEmpresaId(HttpSession session) {
         return (Long) session.getAttribute("empresaId");
     }
 
-    private RolUsuario rolSesion(HttpSession session) {
+    private RolUsuario obtenerRol(HttpSession session) {
         return (RolUsuario) session.getAttribute("rol");
     }
 
+    // HU-07: Consultar procesos
     @GetMapping
-    public String listar(@RequestParam(required = false) String nombre,
-                          @RequestParam(required = false) EstadoProceso estado,
-                          @RequestParam(required = false) String categoria,
-                          @RequestParam(defaultValue = "false") boolean incluirInactivos,
-                          @PageableDefault(size = 10) Pageable pageable,
-                          HttpSession session,
-                          Model model) {
-        Long empresaId = empresaIdSesion(session);
-        if (empresaId == null) return "redirect:/login";
+    @ResponseBody
+    public ResponseEntity<Page<ProcesoListItemDTO>> listar(
+            @RequestParam(required = false) String nombre,
+            @RequestParam(required = false) EstadoProceso estado,
+            @RequestParam(required = false) String categoria,
+            @RequestParam(defaultValue = "false") boolean incluirInactivos,
+            @PageableDefault(size = 10) Pageable pageable,
+            HttpSession session) {
 
-        model.addAttribute("procesos", procesoService.listarProcesos(
-                empresaId, nombre, estado, categoria, incluirInactivos, pageable));
-        model.addAttribute("nombre", nombre);
-        model.addAttribute("estado", estado);
-        model.addAttribute("categoria", categoria);
-        model.addAttribute("incluirInactivos", incluirInactivos);
-        model.addAttribute("estados", EstadoProceso.values());
-        return "procesos/list";
+        Long empresaId = obtenerEmpresaId(session);
+
+        if (empresaId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Page<ProcesoListItemDTO> procesos = procesoService.listarProcesos(
+                empresaId,
+                nombre,
+                estado,
+                categoria,
+                incluirInactivos,
+                pageable
+        );
+
+        return ResponseEntity.ok(procesos);
     }
 
-    @GetMapping("/nuevo")
-    public String formularioCrear(Model model) {
-        model.addAttribute("proceso", new ProcesoCrearRequestDTO());
-        return "procesos/form";
-    }
-
+    // HU-04: Crear proceso
     @PostMapping
-    public String crear(@ModelAttribute("proceso") ProcesoCrearRequestDTO request,
-                         HttpSession session,
-                         Model model,
-                         RedirectAttributes redirectAttributes) {
-        Long empresaId = empresaIdSesion(session);
-        Long usuarioId = usuarioIdSesion(session);
-        if (empresaId == null || usuarioId == null) return "redirect:/login";
+    @ResponseBody
+    public ResponseEntity<ProcesoResponseDTO> crear(
+            @RequestBody ProcesoCrearRequestDTO request,
+            HttpSession session) {
 
-        try {
-            var creado = procesoService.crearProceso(empresaId, usuarioId, request);
-            redirectAttributes.addFlashAttribute("mensaje", "Proceso creado correctamente");
-            return "redirect:/procesos/" + creado.getId();
-        } catch (IllegalArgumentException e) {
-            model.addAttribute("error", e.getMessage());
-            return "procesos/form";
+        Long empresaId = obtenerEmpresaId(session);
+        Long usuarioId = obtenerUsuarioId(session);
+
+        if (empresaId == null || usuarioId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+
+        ProcesoResponseDTO proceso = procesoService.crearProceso(
+                empresaId,
+                usuarioId,
+                request
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(proceso);
     }
 
+    // HU-07: Consultar detalle de un proceso
     @GetMapping("/{id}")
-    public String detalle(@PathVariable Long id, HttpSession session, Model model) {
-        Long empresaId = empresaIdSesion(session);
-        if (empresaId == null) return "redirect:/login";
+    @ResponseBody
+    public ResponseEntity<ProcesoDetalleDTO> detalle(
+            @PathVariable Long id,
+            HttpSession session) {
 
-        try {
-            model.addAttribute("proceso", procesoService.obtenerDetalle(id, empresaId));
-            return "procesos/detalle";
-        } catch (IllegalArgumentException e) {
-            return "redirect:/procesos";
+        Long empresaId = obtenerEmpresaId(session);
+
+        if (empresaId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+
+        ProcesoDetalleDTO proceso = procesoService.obtenerDetalle(
+                id,
+                empresaId
+        );
+
+        return ResponseEntity.ok(proceso);
     }
 
-    @GetMapping("/{id}/editar")
-    public String formularioEditar(@PathVariable Long id, HttpSession session, Model model) {
-        Long empresaId = empresaIdSesion(session);
-        if (empresaId == null) return "redirect:/login";
+    // HU-05: Editar proceso
+    @PutMapping("/{id}")
+    @ResponseBody
+    public ResponseEntity<ProcesoResponseDTO> editar(
+            @PathVariable Long id,
+            @RequestBody ProcesoEditarRequestDTO request,
+            HttpSession session) {
 
-        var detalle = procesoService.obtenerDetalle(id, empresaId);
+        Long empresaId = obtenerEmpresaId(session);
+        Long usuarioId = obtenerUsuarioId(session);
+        RolUsuario rol = obtenerRol(session);
 
-        ProcesoEditarRequestDTO request = new ProcesoEditarRequestDTO();
-        request.setNombre(detalle.getNombre());
-        request.setDescripcion(detalle.getDescripcion());
-        request.setCategoria(detalle.getCategoria());
-        request.setEstado(detalle.getEstado());
-
-        model.addAttribute("proceso", request);
-        model.addAttribute("procesoId", id);
-        model.addAttribute("estados", EstadoProceso.values());
-        return "procesos/form-editar";
-    }
-
-    @PostMapping("/{id}")
-    public String editar(@PathVariable Long id,
-                          @ModelAttribute("proceso") ProcesoEditarRequestDTO request,
-                          HttpSession session,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
-        Long empresaId = empresaIdSesion(session);
-        Long usuarioId = usuarioIdSesion(session);
-        RolUsuario rol = rolSesion(session);
-        if (empresaId == null || usuarioId == null || rol == null) return "redirect:/login";
-
-        try {
-            procesoService.editarProceso(id, empresaId, usuarioId, rol, request);
-            redirectAttributes.addFlashAttribute("mensaje", "Proceso actualizado correctamente");
-            return "redirect:/procesos/" + id;
-        } catch (PermisoDenegadoException | IllegalArgumentException e) {
-            model.addAttribute("error", e.getMessage());
-            model.addAttribute("procesoId", id);
-            model.addAttribute("estados", EstadoProceso.values());
-            return "procesos/form-editar";
+        if (empresaId == null || usuarioId == null || rol == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+
+        ProcesoResponseDTO proceso = procesoService.editarProceso(
+                id,
+                empresaId,
+                usuarioId,
+                rol,
+                request
+        );
+
+        return ResponseEntity.ok(proceso);
     }
 
-    @PostMapping("/{id}/eliminar")
-    public String eliminar(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
-        Long empresaId = empresaIdSesion(session);
-        Long usuarioId = usuarioIdSesion(session);
-        RolUsuario rol = rolSesion(session);
-        if (empresaId == null || usuarioId == null || rol == null) return "redirect:/login";
+    // HU-06: Eliminar proceso
+    @DeleteMapping("/{id}")
+    @ResponseBody
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Long id,
+            HttpSession session) {
 
-        try {
-            procesoService.eliminarProceso(id, empresaId, usuarioId, rol);
-            redirectAttributes.addFlashAttribute("mensaje", "Proceso eliminado correctamente");
-        } catch (PermisoDenegadoException | IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        Long empresaId = obtenerEmpresaId(session);
+        Long usuarioId = obtenerUsuarioId(session);
+        RolUsuario rol = obtenerRol(session);
+
+        if (empresaId == null || usuarioId == null || rol == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return "redirect:/procesos";
+
+        procesoService.eliminarProceso(
+                id,
+                empresaId,
+                usuarioId,
+                rol
+        );
+
+        return ResponseEntity.noContent().build();
     }
 
+    // Consultar historial de un proceso
     @GetMapping("/{id}/historial")
-    public String historial(@PathVariable Long id, HttpSession session, Model model) {
-        Long empresaId = empresaIdSesion(session);
-        if (empresaId == null) return "redirect:/login";
+    @ResponseBody
+    public ResponseEntity<List<HistorialProcesoDTO>> historial(
+            @PathVariable Long id,
+            HttpSession session) {
 
-        model.addAttribute("historial", procesoService.obtenerHistorial(id, empresaId));
-        model.addAttribute("procesoId", id);
-        return "procesos/historial";
+        Long empresaId = obtenerEmpresaId(session);
+
+        if (empresaId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        List<HistorialProcesoDTO> historial =
+                procesoService.obtenerHistorial(id, empresaId);
+
+        return ResponseEntity.ok(historial);
     }
 }

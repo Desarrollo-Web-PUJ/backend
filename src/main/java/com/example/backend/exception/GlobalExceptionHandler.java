@@ -13,16 +13,22 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(RecursoDuplicadoException.class)
-    public ResponseEntity<Map<String, String>> manejarDuplicado(RecursoDuplicadoException ex) {
+    public ResponseEntity<Map<String, String>> manejarDuplicado(
+            RecursoDuplicadoException ex) {
+
         Map<String, String> error = new HashMap<>();
         error.put("mensaje", ex.getMessage());
+
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(RecursoNoEncontradoException.class)
-    public ResponseEntity<Map<String, String>> manejarNoEncontrado(RecursoNoEncontradoException ex) {
+    public ResponseEntity<Map<String, String>> manejarNoEncontrado(
+            RecursoNoEncontradoException ex) {
+
         Map<String, String> error = new HashMap<>();
         error.put("mensaje", ex.getMessage());
+
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
@@ -37,32 +43,35 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> manejarValidacion(MethodArgumentNotValidException ex) {
+    public ResponseEntity<Map<String, String>> manejarValidacion(
+            MethodArgumentNotValidException ex) {
+
         Map<String, String> errores = new HashMap<>();
 
-        ex.getBindingResult().getFieldErrors().forEach(err ->
-                errores.put(err.getField(), err.getDefaultMessage())
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                errores.put(error.getField(), error.getDefaultMessage())
         );
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errores);
     }
+
     @ExceptionHandler(OperacionInvalidaException.class)
     public ResponseEntity<Map<String, String>> manejarOperacionInvalida(
-        OperacionInvalidaException ex) {
+            OperacionInvalidaException ex) {
 
-    Map<String, String> error = new HashMap<>();
-    error.put("mensaje", ex.getMessage());
+        Map<String, String> error = new HashMap<>();
+        error.put("mensaje", ex.getMessage());
 
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-}
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
 
-    @ExceptionHandler(AccesoDenegadoException.class)
-    public ResponseEntity<Map<String, String>> manejarAccesoDenegado(
-        AccesoDenegadoException ex) {
+    @ExceptionHandler(PermisoDenegadoException.class)
+    public ResponseEntity<Map<String, String>> manejarPermisoDenegado(
+            PermisoDenegadoException ex) {
 
-    Map<String, String> error = new HashMap<>();
-    error.put("mensaje", ex.getMessage());
+        Map<String, String> error = new HashMap<>();
+        error.put("mensaje", ex.getMessage());
 
-    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
-}
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
 }

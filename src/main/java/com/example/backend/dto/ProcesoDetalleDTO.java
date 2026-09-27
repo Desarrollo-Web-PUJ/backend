@@ -4,8 +4,6 @@ import com.example.backend.entity.EstadoProceso;
 
 import java.util.List;
 
-// TODO: cuando la entidad Arco este disponible, agregar aqui
-// List<ArcoDTO> arcos para completar el diagrama de HU-07.
 public class ProcesoDetalleDTO {
 
     private Long id;
@@ -16,10 +14,12 @@ public class ProcesoDetalleDTO {
     private Boolean activo;
     private List<LaneDTO> lanes;
     private List<ActividadDTO> actividades;
+    private List<ArcoResponseDTO> arcos;
 
     public ProcesoDetalleDTO(Long id, String nombre, String descripcion, String categoria,
-                              EstadoProceso estado, Boolean activo,
-                              List<LaneDTO> lanes, List<ActividadDTO> actividades) {
+                             EstadoProceso estado, Boolean activo,
+                             List<LaneDTO> lanes, List<ActividadDTO> actividades,
+                             List<ArcoResponseDTO> arcos) {
         this.id = id;
         this.nombre = nombre;
         this.descripcion = descripcion;
@@ -28,14 +28,42 @@ public class ProcesoDetalleDTO {
         this.activo = activo;
         this.lanes = lanes;
         this.actividades = actividades;
+        this.arcos = arcos;
     }
 
-    public Long getId() { return id; }
-    public String getNombre() { return nombre; }
-    public String getDescripcion() { return descripcion; }
-    public String getCategoria() { return categoria; }
-    public EstadoProceso getEstado() { return estado; }
-    public Boolean getActivo() { return activo; }
-    public List<LaneDTO> getLanes() { return lanes; }
-    public List<ActividadDTO> getActividades() { return actividades; }
+    public Long getId() {
+        return id;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public String getDescripcion() {
+        return descripcion;
+    }
+
+    public String getCategoria() {
+        return categoria;
+    }
+
+    public EstadoProceso getEstado() {
+        return estado;
+    }
+
+    public Boolean getActivo() {
+        return activo;
+    }
+
+    public List<LaneDTO> getLanes() {
+        return lanes;
+    }
+
+    public List<ActividadDTO> getActividades() {
+        return actividades;
+    }
+
+    public List<ArcoResponseDTO> getArcos() {
+        return arcos;
+    }
 }

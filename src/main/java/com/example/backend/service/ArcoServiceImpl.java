@@ -3,9 +3,13 @@ package com.example.backend.service;
 import com.example.backend.dto.ArcoRequestDTO;
 import com.example.backend.dto.ArcoResponseDTO;
 import com.example.backend.dto.EliminacionArcoResponseDTO;
-import com.example.backend.entity.*;
-import com.example.backend.exception.AccesoDenegadoException;
+import com.example.backend.entity.Arco;
+import com.example.backend.entity.HistorialProceso;
+import com.example.backend.entity.Proceso;
+import com.example.backend.entity.RolUsuario;
+import com.example.backend.entity.TipoNodo;
 import com.example.backend.exception.OperacionInvalidaException;
+import com.example.backend.exception.PermisoDenegadoException;
 import com.example.backend.exception.RecursoDuplicadoException;
 import com.example.backend.exception.RecursoNoEncontradoException;
 import com.example.backend.repository.ActividadRepository;
@@ -50,6 +54,7 @@ public class ArcoServiceImpl implements ArcoService {
         validarPermisoEdicion(rol);
 
         Proceso proceso = obtenerProceso(procesoId, empresaId);
+        validarProcesoActivo(proceso);
 
         validarArco(
                 procesoId,
@@ -90,6 +95,21 @@ public class ArcoServiceImpl implements ArcoService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ArcoResponseDTO> listarPorProceso(
+            Long procesoId,
+            Long empresaId) {
+
+        obtenerProceso(procesoId, empresaId);
+
+        return arcoRepository
+                .findByProcesoId(procesoId)
+                .stream()
+                .map(this::convertirDTO)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public ArcoResponseDTO editarArco(
             Long procesoId,
@@ -101,6 +121,7 @@ public class ArcoServiceImpl implements ArcoService {
         validarPermisoEdicion(rol);
 
         Proceso proceso = obtenerProceso(procesoId, empresaId);
+        validarProcesoActivo(proceso);
 
         Arco arco = arcoRepository
                 .findByIdAndProcesoId(arcoId, procesoId)
@@ -150,12 +171,13 @@ public class ArcoServiceImpl implements ArcoService {
             RolUsuario rol) {
 
         if (rol != RolUsuario.ADMINISTRADOR) {
-            throw new AccesoDenegadoException(
+            throw new PermisoDenegadoException(
                     "Solo un administrador puede eliminar arcos"
             );
         }
 
         Proceso proceso = obtenerProceso(procesoId, empresaId);
+        validarProcesoActivo(proceso);
 
         Arco arco = arcoRepository
                 .findByIdAndProcesoId(arcoId, procesoId)
@@ -221,6 +243,30 @@ public class ArcoServiceImpl implements ArcoService {
             ArcoRequestDTO request,
             Long arcoIdActual) {
 
+        if (request == null) {
+            throw new OperacionInvalidaException(
+                    "Los datos del arco son obligatorios"
+            );
+        }
+
+        if (request.getTipoOrigen() == null
+                || request.getTipoDestino() == null
+                || request.getOrigenId() == null
+                || request.getDestinoId() == null) {
+
+            throw new OperacionInvalidaException(
+                    "Debe indicar el tipo y el ID de los nodos de origen y destino"
+            );
+        }
+
+        if (request.getOrigenId() <= 0
+                || request.getDestinoId() <= 0) {
+
+            throw new OperacionInvalidaException(
+                    "Los IDs de los nodos deben ser positivos"
+            );
+        }
+
         if (request.getTipoOrigen() == request.getTipoDestino()
                 && request.getOrigenId().equals(request.getDestinoId())) {
 
@@ -245,28 +291,26 @@ public class ArcoServiceImpl implements ArcoService {
 
         if (arcoIdActual == null) {
 
-            duplicado =
-                    arcoRepository
-                            .existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoId(
-                                    procesoId,
-                                    request.getTipoOrigen(),
-                                    request.getOrigenId(),
-                                    request.getTipoDestino(),
-                                    request.getDestinoId()
-                            );
+            duplicado = arcoRepository
+                    .existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoId(
+                            procesoId,
+                            request.getTipoOrigen(),
+                            request.getOrigenId(),
+                            request.getTipoDestino(),
+                            request.getDestinoId()
+                    );
 
         } else {
 
-            duplicado =
-                    arcoRepository
-                            .existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoIdAndIdNot(
-                                    procesoId,
-                                    request.getTipoOrigen(),
-                                    request.getOrigenId(),
-                                    request.getTipoDestino(),
-                                    request.getDestinoId(),
-                                    arcoIdActual
-                            );
+            duplicado = arcoRepository
+                    .existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoIdAndIdNot(
+                            procesoId,
+                            request.getTipoOrigen(),
+                            request.getOrigenId(),
+                            request.getTipoDestino(),
+                            request.getDestinoId(),
+                            arcoIdActual
+                    );
         }
 
         if (duplicado) {
@@ -283,19 +327,18 @@ public class ArcoServiceImpl implements ArcoService {
 
         if (tipoNodo == TipoNodo.ACTIVIDAD) {
 
-            Actividad actividad = actividadRepository
-                    .findById(nodoId)
+            actividadRepository
+                    .findByIdAndProcesoIdAndActivoTrue(
+                            nodoId,
+                            procesoId
+                    )
                     .orElseThrow(() ->
                             new RecursoNoEncontradoException(
-                                    "La actividad " + nodoId + " no existe"
+                                    "La actividad "
+                                            + nodoId
+                                            + " no existe, está eliminada o no pertenece al proceso"
                             )
                     );
-
-            if (!actividad.getProceso().getId().equals(procesoId)) {
-                throw new OperacionInvalidaException(
-                        "La actividad no pertenece al proceso indicado"
-                );
-            }
 
             return;
         }
@@ -311,52 +354,61 @@ public class ArcoServiceImpl implements ArcoService {
                     "La validación de eventos quedará disponible al integrar la entidad Evento"
             );
         }
+
+        throw new OperacionInvalidaException(
+                "El tipo de nodo no está soportado"
+        );
     }
 
     private Proceso obtenerProceso(
             Long procesoId,
             Long empresaId) {
 
-        Proceso proceso = procesoRepository.findById(procesoId)
+        return procesoRepository
+                .findByIdAndEmpresaId(
+                        procesoId,
+                        empresaId
+                )
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
-                                "El proceso no existe"
+                                "El proceso no existe en la empresa indicada"
                         )
                 );
-
-        if (!proceso.getEmpresa().getId().equals(empresaId)) {
-            throw new AccesoDenegadoException(
-                    "No tiene acceso a este proceso"
-            );
-        }
-
-        return proceso;
     }
 
-    private void validarPermisoEdicion(RolUsuario rol) {
+    private void validarProcesoActivo(
+            Proceso proceso) {
+
+        if (!Boolean.TRUE.equals(proceso.getActivo())) {
+            throw new OperacionInvalidaException(
+                    "No se pueden modificar los arcos de un proceso eliminado"
+            );
+        }
+    }
+
+    private void validarPermisoEdicion(
+            RolUsuario rol) {
 
         if (rol != RolUsuario.ADMINISTRADOR
                 && rol != RolUsuario.EDITOR) {
 
-            throw new AccesoDenegadoException(
+            throw new PermisoDenegadoException(
                     "El usuario no tiene permisos de edición"
             );
         }
     }
 
-    private ArcoResponseDTO convertirDTO(Arco arco) {
+    private ArcoResponseDTO convertirDTO(
+            Arco arco) {
 
         ArcoResponseDTO dto = new ArcoResponseDTO();
 
         dto.setId(arco.getId());
         dto.setProcesoId(arco.getProceso().getId());
-
         dto.setTipoOrigen(arco.getTipoOrigen());
         dto.setOrigenId(arco.getOrigenId());
-
         dto.setTipoDestino(arco.getTipoDestino());
         dto.setDestinoId(arco.getDestinoId());
-
         dto.setEtiqueta(arco.getEtiqueta());
         dto.setCondicion(arco.getCondicion());
 

@@ -5,7 +5,14 @@ import com.example.backend.dto.ArcoResponseDTO;
 import com.example.backend.dto.EliminacionArcoResponseDTO;
 import com.example.backend.entity.RolUsuario;
 
+import java.util.List;
+
 public interface ArcoService {
+
+    List<ArcoResponseDTO> listarPorProceso(
+            Long procesoId,
+            Long empresaId
+    );
 
     ArcoResponseDTO crearArco(
             Long procesoId,

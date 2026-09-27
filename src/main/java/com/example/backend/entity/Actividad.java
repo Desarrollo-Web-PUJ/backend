@@ -3,8 +3,12 @@ package com.example.backend.entity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "actividades",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"nombre", "proceso_id"}))
+@Table(
+        name = "actividades",
+        uniqueConstraints = @UniqueConstraint(
+                columnNames = {"nombre", "proceso_id"}
+        )
+)
 public class Actividad {
 
     @Id
@@ -32,20 +36,76 @@ public class Actividad {
     @Column(name = "posicion_y")
     private Double posicionY;
 
-    public Actividad() {}
+    @Column(
+            nullable = false,
+            columnDefinition = "boolean default true"
+    )
+    private Boolean activo = true;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getNombre() { return nombre; }
-    public void setNombre(String nombre) { this.nombre = nombre; }
-    public TipoActividad getTipo() { return tipo; }
-    public void setTipo(TipoActividad tipo) { this.tipo = tipo; }
-    public Proceso getProceso() { return proceso; }
-    public void setProceso(Proceso proceso) { this.proceso = proceso; }
-    public Lane getLane() { return lane; }
-    public void setLane(Lane lane) { this.lane = lane; }
-    public Double getPosicionX() { return posicionX; }
-    public void setPosicionX(Double posicionX) { this.posicionX = posicionX; }
-    public Double getPosicionY() { return posicionY; }
-    public void setPosicionY(Double posicionY) { this.posicionY = posicionY; }
+    public Actividad() {
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    public TipoActividad getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(TipoActividad tipo) {
+        this.tipo = tipo;
+    }
+
+    public Proceso getProceso() {
+        return proceso;
+    }
+
+    public void setProceso(Proceso proceso) {
+        this.proceso = proceso;
+    }
+
+    public Lane getLane() {
+        return lane;
+    }
+
+    public void setLane(Lane lane) {
+        this.lane = lane;
+    }
+
+    public Double getPosicionX() {
+        return posicionX;
+    }
+
+    public void setPosicionX(Double posicionX) {
+        this.posicionX = posicionX;
+    }
+
+    public Double getPosicionY() {
+        return posicionY;
+    }
+
+    public void setPosicionY(Double posicionY) {
+        this.posicionY = posicionY;
+    }
+
+    public Boolean getActivo() {
+        return activo;
+    }
+
+    public void setActivo(Boolean activo) {
+        this.activo = activo;
+    }
 }
