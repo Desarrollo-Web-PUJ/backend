@@ -4,11 +4,13 @@ import jakarta.validation.constraints.NotNull;
 
 public class LaneRequestDTO {
 
-    @NotNull(message = "Debe seleccionar el rol de proceso de la lane")
+    @NotNull(message = "El rol de proceso de la lane es obligatorio")
     private Long rolProcesoId;
 
-    public LaneRequestDTO() {}
+    private Integer orden;
 
     public Long getRolProcesoId() { return rolProcesoId; }
     public void setRolProcesoId(Long rolProcesoId) { this.rolProcesoId = rolProcesoId; }
+    public Integer getOrden() { return orden; }
+    public void setOrden(Integer orden) { this.orden = orden; }
 }

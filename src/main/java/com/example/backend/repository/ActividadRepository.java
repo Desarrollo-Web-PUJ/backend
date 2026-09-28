@@ -1,10 +1,11 @@
 package com.example.backend.repository;
 
-import com.example.backend.entity.Actividad;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.backend.entity.Actividad;
 
 public interface ActividadRepository
         extends JpaRepository<Actividad, Long> {
@@ -28,4 +29,6 @@ public interface ActividadRepository
             Long id,
             Long procesoId
     );
+
+    boolean existsByLaneIdAndActivoTrue(Long laneId);
 }
