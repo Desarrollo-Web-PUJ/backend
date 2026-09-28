@@ -11,6 +11,8 @@ public interface ProcesoCompartidoRepository extends JpaRepository<ProcesoCompar
 
     List<ProcesoCompartido> findByProcesoIdAndActivoTrue(Long procesoId);
 
+    Optional<ProcesoCompartido> findByProcesoIdAndEmpresaDestinoId(Long procesoId, Long empresaDestinoId);
+
     Optional<ProcesoCompartido> findByProcesoIdAndEmpresaDestinoIdAndActivoTrue(Long procesoId, Long empresaDestinoId);
 
     List<ProcesoCompartido> findByEmpresaDestinoIdAndActivoTrue(Long empresaDestinoId);

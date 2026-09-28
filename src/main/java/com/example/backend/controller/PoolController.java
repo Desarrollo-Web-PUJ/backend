@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.backend.dto.EliminacionPoolResponseDTO;
 import com.example.backend.dto.PoolRequestDTO;
 import com.example.backend.dto.PoolResponseDTO;
+import com.example.backend.dto.RolProcesoResponseDTO;
 import com.example.backend.entity.RolUsuario;
 import com.example.backend.exception.SesionNoAutenticadaException;
 import com.example.backend.service.PoolService;
@@ -41,6 +42,17 @@ public class PoolController {
 
         Long empresaId = obtenerEmpresaId(session);
         return ResponseEntity.ok(poolService.listarPorProceso(procesoId, empresaId));
+    }
+
+    // HU-24: Roles de proceso activos que pueden asignarse a lanes del pool
+    @GetMapping("/{poolId}/roles-disponibles")
+    public ResponseEntity<List<RolProcesoResponseDTO>> rolesDisponibles(
+            @PathVariable Long procesoId,
+            @PathVariable Long poolId,
+            HttpSession session) {
+
+        Long empresaId = obtenerEmpresaId(session);
+        return ResponseEntity.ok(poolService.listarRolesDisponibles(procesoId, poolId, empresaId));
     }
 
     // HU-21: Crear pool

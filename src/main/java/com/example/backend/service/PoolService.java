@@ -5,11 +5,14 @@ import java.util.List;
 import com.example.backend.dto.EliminacionPoolResponseDTO;
 import com.example.backend.dto.PoolRequestDTO;
 import com.example.backend.dto.PoolResponseDTO;
+import com.example.backend.dto.RolProcesoResponseDTO;
 import com.example.backend.entity.RolUsuario;
 
 public interface PoolService {
 
     List<PoolResponseDTO> listarPorProceso(Long procesoId, Long empresaId);
+
+    List<RolProcesoResponseDTO> listarRolesDisponibles(Long procesoId, Long poolId, Long empresaId);
 
     PoolResponseDTO crearPool(Long procesoId, PoolRequestDTO request, Long empresaId, RolUsuario rol);
 

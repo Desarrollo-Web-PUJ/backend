@@ -31,6 +31,8 @@ public interface LaneRepository extends JpaRepository<Lane, Long> {
 
     Optional<Lane> findByIdAndPoolId(Long id, Long poolId);
 
+    Optional<Lane> findByIdAndPoolIdAndActivoTrue(Long id, Long poolId);
+
     boolean existsByPoolIdAndRolProcesoIdAndActivoTrue(Long poolId, Long rolProcesoId);
 
     // Uso de un rol de proceso en cualquier lane activa.

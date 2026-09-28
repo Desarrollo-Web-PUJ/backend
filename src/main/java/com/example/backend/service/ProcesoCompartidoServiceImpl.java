@@ -2,6 +2,7 @@ package com.example.backend.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,12 +70,21 @@ public class ProcesoCompartidoServiceImpl implements ProcesoCompartidoService {
         Empresa empresaDestino = empresaRepository.findById(request.getEmpresaDestinoId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("La empresa destino no existe"));
 
-        if (procesoCompartidoRepository.existsByProcesoIdAndEmpresaDestinoIdAndActivoTrue(
-                proceso.getId(), empresaDestino.getId())) {
+        Optional<ProcesoCompartido> compartidoExistente =
+                procesoCompartidoRepository.findByProcesoIdAndEmpresaDestinoId(
+                        proceso.getId(),
+                        empresaDestino.getId()
+                );
+
+        if (compartidoExistente
+                .map(ProcesoCompartido::getActivo)
+                .orElse(false)) {
             throw new RecursoDuplicadoException("El proceso ya está compartido con esa empresa");
         }
 
-        ProcesoCompartido compartido = new ProcesoCompartido();
+        ProcesoCompartido compartido =
+                compartidoExistente.orElseGet(ProcesoCompartido::new);
+
         compartido.setProceso(proceso);
         compartido.setEmpresaDestino(empresaDestino);
         compartido.setFechaCompartido(LocalDateTime.now());

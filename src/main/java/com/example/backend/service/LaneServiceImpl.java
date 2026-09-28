@@ -14,6 +14,7 @@ import com.example.backend.exception.OperacionInvalidaException;
 import com.example.backend.exception.PermisoDenegadoException;
 import com.example.backend.exception.RecursoNoEncontradoException;
 import com.example.backend.repository.ActividadRepository;
+import com.example.backend.repository.EventoMensajeRepository;
 import com.example.backend.repository.LaneRepository;
 import com.example.backend.repository.PoolRepository;
 import com.example.backend.repository.ProcesoRepository;
@@ -21,7 +22,10 @@ import com.example.backend.repository.RolProcesoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,18 +36,21 @@ public class LaneServiceImpl implements LaneService {
     private final PoolRepository poolRepository;
     private final RolProcesoRepository rolProcesoRepository;
     private final ActividadRepository actividadRepository;
+    private final EventoMensajeRepository eventoMensajeRepository;
 
     public LaneServiceImpl(
             LaneRepository laneRepository,
             ProcesoRepository procesoRepository,
             PoolRepository poolRepository,
             RolProcesoRepository rolProcesoRepository,
-            ActividadRepository actividadRepository) {
+            ActividadRepository actividadRepository,
+            EventoMensajeRepository eventoMensajeRepository) {
         this.laneRepository = laneRepository;
         this.procesoRepository = procesoRepository;
         this.poolRepository = poolRepository;
         this.rolProcesoRepository = rolProcesoRepository;
         this.actividadRepository = actividadRepository;
+        this.eventoMensajeRepository = eventoMensajeRepository;
     }
 
     @Override
@@ -73,6 +80,7 @@ public class LaneServiceImpl implements LaneService {
         validarPermisoEdicion(rol);
 
         Proceso proceso = obtenerProceso(procesoId, empresaId);
+        validarProcesoActivo(proceso);
         Pool pool = obtenerPool(poolId, procesoId);
         validarPoolPropio(pool);
 
@@ -87,11 +95,11 @@ public class LaneServiceImpl implements LaneService {
         lane.setProceso(proceso);
         lane.setPool(pool);
         lane.setRolProceso(rolProceso);
-        lane.setOrden(request.getOrden() != null ? request.getOrden()
-                : laneRepository.findByPoolIdAndActivoTrueOrderByOrdenAsc(poolId).size());
+        lane.setOrden(0);
         lane.setActivo(true);
 
         lane = laneRepository.save(lane);
+        normalizarOrden(poolId, lane.getId(), request.getOrden());
 
         return toDTO(lane);
     }
@@ -101,11 +109,12 @@ public class LaneServiceImpl implements LaneService {
     public LaneDTO editarLane(Long procesoId, Long poolId, Long laneId, LaneRequestDTO request, Long empresaId, RolUsuario rol) {
         validarPermisoEdicion(rol);
 
-        obtenerProceso(procesoId, empresaId);
+        Proceso proceso = obtenerProceso(procesoId, empresaId);
+        validarProcesoActivo(proceso);
         Pool pool = obtenerPool(poolId, procesoId);
         validarPoolPropio(pool);
 
-        Lane lane = laneRepository.findByIdAndPoolId(laneId, poolId)
+        Lane lane = laneRepository.findByIdAndPoolIdAndActivoTrue(laneId, poolId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No existe la lane indicada en este pool"));
 
         RolProceso rolProceso = obtenerRolProcesoActivo(request.getRolProcesoId(), empresaId);
@@ -118,11 +127,12 @@ public class LaneServiceImpl implements LaneService {
         }
 
         lane.setRolProceso(rolProceso);
+        lane = laneRepository.save(lane);
+
         if (request.getOrden() != null) {
-            lane.setOrden(request.getOrden());
+            normalizarOrden(poolId, lane.getId(), request.getOrden());
         }
 
-        lane = laneRepository.save(lane);
         return toDTO(lane);
     }
 
@@ -131,13 +141,20 @@ public class LaneServiceImpl implements LaneService {
     public List<LaneDTO> reordenarLanes(Long procesoId, Long poolId, ReordenarLanesRequestDTO request, Long empresaId, RolUsuario rol) {
         validarPermisoEdicion(rol);
 
-        obtenerProceso(procesoId, empresaId);
+        Proceso proceso = obtenerProceso(procesoId, empresaId);
+        validarProcesoActivo(proceso);
         Pool pool = obtenerPool(poolId, procesoId);
+        validarPoolPropio(pool);
 
         List<Lane> lanes = laneRepository.findByPoolIdAndActivoTrueOrderByOrdenAsc(pool.getId());
 
         if (lanes.size() != request.getLaneIdsEnOrden().size()) {
             throw new OperacionInvalidaException("Debe indicar el orden de todas las lanes del pool");
+        }
+
+        Set<Long> idsUnicos = new HashSet<>(request.getLaneIdsEnOrden());
+        if (idsUnicos.size() != request.getLaneIdsEnOrden().size()) {
+            throw new OperacionInvalidaException("El orden de lanes no puede contener IDs repetidos");
         }
 
         for (int i = 0; i < request.getLaneIdsEnOrden().size(); i++) {
@@ -161,21 +178,28 @@ public class LaneServiceImpl implements LaneService {
     public EliminacionLaneResponseDTO eliminarLane(Long procesoId, Long poolId, Long laneId, Long empresaId, RolUsuario rol) {
         validarPermisoEdicion(rol);
 
-        obtenerProceso(procesoId, empresaId);
+        Proceso proceso = obtenerProceso(procesoId, empresaId);
+        validarProcesoActivo(proceso);
         obtenerPool(poolId, procesoId);
 
-        Lane lane = laneRepository.findByIdAndPoolId(laneId, poolId)
+        Lane lane = laneRepository.findByIdAndPoolIdAndActivoTrue(laneId, poolId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No existe la lane indicada en este pool"));
 
-        // Requiere en ActividadRepository: existsByLaneIdAndActivoTrue(Long laneId)
         boolean tieneActividades = actividadRepository.existsByLaneIdAndActivoTrue(laneId);
         if (tieneActividades) {
             throw new OperacionInvalidaException(
                     "No se puede eliminar la lane: reasigne sus actividades a otra lane primero");
         }
 
+        boolean tieneEventos = eventoMensajeRepository.existsByLaneIdAndActivoTrue(laneId);
+        if (tieneEventos) {
+            throw new OperacionInvalidaException(
+                    "No se puede eliminar la lane: reasigne o elimine sus eventos de mensaje primero");
+        }
+
         lane.setActivo(false);
         laneRepository.save(lane);
+        normalizarOrden(poolId, null, null);
 
         return new EliminacionLaneResponseDTO("Lane eliminada correctamente", List.of());
     }
@@ -223,9 +247,41 @@ public class LaneServiceImpl implements LaneService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("El proceso no existe en la empresa indicada"));
     }
 
+    private void validarProcesoActivo(Proceso proceso) {
+        if (!Boolean.TRUE.equals(proceso.getActivo())) {
+            throw new OperacionInvalidaException("No se pueden modificar las lanes de un proceso eliminado");
+        }
+    }
+
     private void validarPermisoEdicion(RolUsuario rol) {
         if (rol != RolUsuario.ADMINISTRADOR && rol != RolUsuario.EDITOR) {
             throw new PermisoDenegadoException("El usuario no tiene permisos de edición");
+        }
+    }
+
+    private void normalizarOrden(Long poolId, Long laneMovidaId, Integer ordenSolicitado) {
+        List<Lane> lanes = new ArrayList<>(laneRepository.findByPoolIdAndActivoTrueOrderByOrdenAsc(poolId));
+
+        Lane laneMovida = null;
+        if (laneMovidaId != null) {
+            laneMovida = lanes.stream()
+                    .filter(lane -> lane.getId().equals(laneMovidaId))
+                    .findFirst()
+                    .orElseThrow(() -> new RecursoNoEncontradoException("No existe la lane indicada en este pool"));
+            lanes.remove(laneMovida);
+        }
+
+        if (laneMovida != null) {
+            int indice = ordenSolicitado == null ? lanes.size() : Math.max(0, Math.min(ordenSolicitado, lanes.size()));
+            lanes.add(indice, laneMovida);
+        }
+
+        for (int i = 0; i < lanes.size(); i++) {
+            Lane lane = lanes.get(i);
+            if (lane.getOrden() == null || lane.getOrden() != i) {
+                lane.setOrden(i);
+                laneRepository.save(lane);
+            }
         }
     }
 }

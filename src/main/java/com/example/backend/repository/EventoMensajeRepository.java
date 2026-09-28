@@ -31,4 +31,6 @@ public interface EventoMensajeRepository extends JpaRepository<EventoMensaje, Lo
     boolean existsByPoolIdAndTipoAndActivoTrue(Long poolId, TipoEventoMensaje tipo);
 
     boolean existsByPoolIdAndActivoTrue(Long poolId);
+
+    boolean existsByLaneIdAndActivoTrue(Long laneId);
 }

@@ -249,7 +249,7 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
     }
 
     private Lane verificarLane(Long poolId, Long laneId) {
-        return laneRepository.findByIdAndPoolId(laneId, poolId)
+        return laneRepository.findByIdAndPoolIdAndActivoTrue(laneId, poolId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Lane no encontrada en el pool"));
     }
 

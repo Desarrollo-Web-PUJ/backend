@@ -3,6 +3,7 @@ package com.example.backend.service;
 import com.example.backend.dto.EliminacionPoolResponseDTO;
 import com.example.backend.dto.PoolRequestDTO;
 import com.example.backend.dto.PoolResponseDTO;
+import com.example.backend.dto.RolProcesoResponseDTO;
 import com.example.backend.entity.HistorialProceso;
 import com.example.backend.entity.Pool;
 import com.example.backend.entity.Proceso;
@@ -18,6 +19,7 @@ import com.example.backend.repository.GatewayRepository;
 import com.example.backend.repository.LaneRepository;
 import com.example.backend.repository.PoolRepository;
 import com.example.backend.repository.ProcesoRepository;
+import com.example.backend.repository.RolProcesoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,7 @@ public class PoolServiceImpl implements PoolService {
     private final GatewayRepository gatewayRepository;
     private final EventoMensajeRepository eventoMensajeRepository;
     private final HistorialProcesoRepository historialProcesoRepository;
+    private final RolProcesoRepository rolProcesoRepository;
 
     public PoolServiceImpl(
             PoolRepository poolRepository,
@@ -40,13 +43,15 @@ public class PoolServiceImpl implements PoolService {
             LaneRepository laneRepository,
             GatewayRepository gatewayRepository,
             EventoMensajeRepository eventoMensajeRepository,
-            HistorialProcesoRepository historialProcesoRepository) {
+            HistorialProcesoRepository historialProcesoRepository,
+            RolProcesoRepository rolProcesoRepository) {
         this.poolRepository = poolRepository;
         this.procesoRepository = procesoRepository;
         this.laneRepository = laneRepository;
         this.gatewayRepository = gatewayRepository;
         this.eventoMensajeRepository = eventoMensajeRepository;
         this.historialProcesoRepository = historialProcesoRepository;
+        this.rolProcesoRepository = rolProcesoRepository;
     }
 
     @Override
@@ -56,6 +61,20 @@ public class PoolServiceImpl implements PoolService {
 
         return poolRepository.findByProcesoIdAndActivoTrue(procesoId).stream()
                 .map(this::convertirDTO)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RolProcesoResponseDTO> listarRolesDisponibles(Long procesoId, Long poolId, Long empresaId) {
+        obtenerProceso(procesoId, empresaId);
+        obtenerPool(poolId, procesoId);
+
+        return rolProcesoRepository.findByEmpresaIdAndActivoTrueOrderByNombreAsc(empresaId).stream()
+                .map(rolProceso -> new RolProcesoResponseDTO(
+                        rolProceso.getId(),
+                        rolProceso.getNombre(),
+                        rolProceso.getDescripcion()))
                 .toList();
     }
 
