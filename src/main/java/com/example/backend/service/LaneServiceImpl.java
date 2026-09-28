@@ -78,7 +78,7 @@ public class LaneServiceImpl implements LaneService {
 
         RolProceso rolProceso = obtenerRolProcesoActivo(request.getRolProcesoId(), empresaId);
 
-        if (laneRepository.existsByPoolIdAndRolProcesoId(poolId, rolProceso.getId())) {
+        if (laneRepository.existsByPoolIdAndRolProcesoIdAndActivoTrue(poolId, rolProceso.getId())) {
             throw new OperacionInvalidaException("Ese rol de proceso ya tiene una lane en este pool");
         }
 
@@ -111,7 +111,7 @@ public class LaneServiceImpl implements LaneService {
         RolProceso rolProceso = obtenerRolProcesoActivo(request.getRolProcesoId(), empresaId);
 
         Long rolActualId = lane.getRolProceso() != null ? lane.getRolProceso().getId() : null;
-        boolean rolUsadoPorOtraLane = laneRepository.existsByPoolIdAndRolProcesoId(poolId, rolProceso.getId())
+        boolean rolUsadoPorOtraLane = laneRepository.existsByPoolIdAndRolProcesoIdAndActivoTrue(poolId, rolProceso.getId())
                 && !rolProceso.getId().equals(rolActualId);
         if (rolUsadoPorOtraLane) {
             throw new OperacionInvalidaException("Ese rol de proceso ya tiene una lane en este pool");

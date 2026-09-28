@@ -1,7 +1,6 @@
 package com.example.backend.service;
 
 import com.example.backend.dto.EliminacionRolProcesoResponseDTO;
-import com.example.backend.dto.LaneDTO;
 import com.example.backend.dto.RolProcesoListItemDTO;
 import com.example.backend.dto.RolProcesoRequestDTO;
 import com.example.backend.dto.RolProcesoResponseDTO;
@@ -35,11 +34,4 @@ public interface RolProcesoService {
             String nombre,
             Pageable pageable,
             Long empresaId);
-
-    // Nombrar una lane de un proceso con un rol del catalogo de la empresa
-    LaneDTO crearLaneConRol(
-            Long procesoId,
-            Long rolProcesoId,
-            Long empresaId,
-            RolUsuario rol);
 }

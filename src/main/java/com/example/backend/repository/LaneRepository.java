@@ -14,17 +14,14 @@ public interface LaneRepository extends JpaRepository<Lane, Long> {
 
     List<Lane> findByProcesoIdAndActivoTrueOrderByOrdenAsc(Long procesoId);
 
-    boolean existsByProcesoIdAndRolProcesoId(Long procesoId, Long rolProcesoId);
-
-    // Devuelve filas [rolId, procesoId, procesoNombre] de los procesos activos
-    // en los que cada rol esta siendo usado por alguna lane
+    // Devuelve filas [rolId, procesoId, procesoNombre] de los procesos
+    // en los que cada rol esta siendo usado por alguna lane activa.
     @Query("""
             SELECT DISTINCT l.rolProceso.id, p.id, p.nombre
             FROM Lane l
             JOIN l.proceso p
             WHERE l.rolProceso.id IN :rolIds
             AND l.activo = true
-            AND p.activo = true
             ORDER BY p.nombre
             """)
     List<Object[]> findUsoDeRoles(@Param("rolIds") Collection<Long> rolIds);
@@ -34,10 +31,8 @@ public interface LaneRepository extends JpaRepository<Lane, Long> {
 
     Optional<Lane> findByIdAndPoolId(Long id, Long poolId);
 
-    boolean existsByPoolIdAndRolProcesoId(Long poolId, Long rolProcesoId);
+    boolean existsByPoolIdAndRolProcesoIdAndActivoTrue(Long poolId, Long rolProcesoId);
 
-    // NUEVO (HU-24): uso de un rol de proceso en CUALQUIER lane de la empresa
-    // (no solo en un proceso puntual). Úsalo en RolProcesoServiceImpl.eliminar()
-    // en lugar de / además de la validación actual — coordinar con el dueño de Roles.
+    // Uso de un rol de proceso en cualquier lane activa.
     boolean existsByRolProcesoIdAndActivoTrue(Long rolProcesoId);
 }

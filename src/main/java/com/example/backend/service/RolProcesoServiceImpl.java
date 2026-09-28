@@ -1,14 +1,12 @@
 package com.example.backend.service;
 
 import com.example.backend.dto.EliminacionRolProcesoResponseDTO;
-import com.example.backend.dto.LaneDTO;
 import com.example.backend.dto.ProcesoUsoDTO;
 import com.example.backend.dto.RolProcesoListItemDTO;
 import com.example.backend.dto.RolProcesoRequestDTO;
 import com.example.backend.dto.RolProcesoResponseDTO;
 import com.example.backend.entity.Empresa;
 import com.example.backend.entity.HistorialProceso;
-import com.example.backend.entity.Lane;
 import com.example.backend.entity.Proceso;
 import com.example.backend.entity.RolProceso;
 import com.example.backend.entity.RolUsuario;
@@ -254,64 +252,6 @@ public class RolProcesoServiceImpl implements RolProcesoService {
                     !enUso
             );
         });
-    }
-
-    // Nombra una lane de un proceso con un rol del catalogo de la empresa
-    @Override
-    @Transactional
-    public LaneDTO crearLaneConRol(
-            Long procesoId,
-            Long rolProcesoId,
-            Long empresaId,
-            RolUsuario rol) {
-
-        if (rol != RolUsuario.ADMINISTRADOR
-                && rol != RolUsuario.EDITOR) {
-
-            throw new PermisoDenegadoException(
-                    "No tiene permisos para modificar las lanes del proceso"
-            );
-        }
-
-        Proceso proceso = procesoRepository
-                .findByIdAndEmpresaId(procesoId, empresaId)
-                .orElseThrow(() ->
-                        new RecursoNoEncontradoException(
-                                "El proceso no existe o no pertenece a la empresa"
-                        )
-                );
-
-        if (Boolean.FALSE.equals(proceso.getActivo())) {
-            throw new OperacionInvalidaException(
-                    "No se pueden modificar las lanes de un proceso eliminado"
-            );
-        }
-
-        RolProceso rolProceso = obtenerRolActivo(rolProcesoId, empresaId);
-
-        if (laneRepository.existsByProcesoIdAndRolProcesoId(
-                procesoId,
-                rolProcesoId)) {
-
-            throw new RecursoDuplicadoException(
-                    "El proceso ya tiene una lane con el rol '"
-                            + rolProceso.getNombre()
-                            + "'"
-            );
-        }
-
-        Lane lane = new Lane(rolProceso.getNombre(), proceso);
-        lane.setRolProceso(rolProceso);
-        lane = laneRepository.save(lane);
-
-        registrarHistorial(
-                proceso,
-                "Se agregó la lane '"
-                        + rolProceso.getNombre()
-                        + "' (rol de proceso)"
-        );
-
-        return new LaneDTO(lane.getId(), lane.getNombre());
     }
 
     // Filas [rolId, procesoId, procesoNombre] agrupadas por rol
