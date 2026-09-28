@@ -25,7 +25,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponseDTO iniciarSesion(LoginRequestDTO request) {
 
-        Usuario usuario = usuarioRepository.findByCorreo(request.getCorreo())
+        String correo = request.getCorreo().trim().toLowerCase();
+
+        Usuario usuario = usuarioRepository.findByCorreoIgnoreCase(correo)
                 .orElseThrow(() ->
                         new CredencialesInvalidasException(
                                 "Correo o contraseña incorrectos"
