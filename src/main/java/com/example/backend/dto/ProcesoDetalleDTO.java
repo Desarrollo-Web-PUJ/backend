@@ -17,6 +17,9 @@ public class ProcesoDetalleDTO {
     private List<GatewayResponseDTO> gateways;
     private List<ArcoResponseDTO> arcos;
 
+    private List<EventoMensajeResponseDTO> eventosMensaje;
+    private List<FlujoMensajeResponseDTO> flujosMensaje;
+
     public ProcesoDetalleDTO(
             Long id,
             String nombre,
@@ -27,7 +30,9 @@ public class ProcesoDetalleDTO {
             List<LaneDTO> lanes,
             List<ActividadDTO> actividades,
             List<GatewayResponseDTO> gateways,
-            List<ArcoResponseDTO> arcos) {
+            List<ArcoResponseDTO> arcos, 
+            List<EventoMensajeResponseDTO> eventosMensaje,
+            List<FlujoMensajeResponseDTO> flujosMensaje) {
 
         this.id = id;
         this.nombre = nombre;
@@ -39,6 +44,8 @@ public class ProcesoDetalleDTO {
         this.actividades = actividades;
         this.gateways = gateways;
         this.arcos = arcos;
+        this.eventosMensaje = eventosMensaje;
+        this.flujosMensaje = flujosMensaje;
     }
 
     public Long getId() {
@@ -79,5 +86,11 @@ public class ProcesoDetalleDTO {
 
     public List<ArcoResponseDTO> getArcos() {
         return arcos;
+    }
+    public List<EventoMensajeResponseDTO> getEventosMensaje() { 
+        return eventosMensaje; 
+    }
+    public List<FlujoMensajeResponseDTO> getFlujosMensaje() { 
+        return flujosMensaje; 
     }
 }
