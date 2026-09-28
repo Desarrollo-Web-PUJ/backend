@@ -19,16 +19,16 @@ import com.example.backend.entity.Proceso;
 import com.example.backend.entity.RolUsuario;
 import com.example.backend.entity.TipoGateway;
 import com.example.backend.entity.TipoNodo;
+import com.example.backend.entity.EventoMensaje;
 import com.example.backend.exception.OperacionInvalidaException;
 import com.example.backend.exception.PermisoDenegadoException;
 import com.example.backend.exception.RecursoDuplicadoException;
 import com.example.backend.exception.RecursoNoEncontradoException;
 import com.example.backend.repository.ActividadRepository;
 import com.example.backend.repository.ArcoRepository;
+import com.example.backend.repository.EventoMensajeRepository;
 import com.example.backend.repository.GatewayRepository;
 import com.example.backend.repository.HistorialProcesoRepository;
-import com.example.backend.repository.LaneRepository;
-import com.example.backend.repository.PoolRepository;
 import com.example.backend.repository.ProcesoRepository;
 
 @Service
@@ -38,26 +38,23 @@ public class ArcoServiceImpl implements ArcoService {
     private final ProcesoRepository procesoRepository;
     private final ActividadRepository actividadRepository;
     private final GatewayRepository gatewayRepository;
+    private final EventoMensajeRepository eventoMensajeRepository;
     private final HistorialProcesoRepository historialProcesoRepository;
-    private final LaneRepository laneRepository;
-    private final PoolRepository poolRepository;
 
     public ArcoServiceImpl(
             ArcoRepository arcoRepository,
             ProcesoRepository procesoRepository,
             ActividadRepository actividadRepository,
             GatewayRepository gatewayRepository,
-            HistorialProcesoRepository historialProcesoRepository,
-            LaneRepository laneRepository,
-            PoolRepository poolRepository) {
+            EventoMensajeRepository eventoMensajeRepository,
+            HistorialProcesoRepository historialProcesoRepository) {
 
         this.arcoRepository = arcoRepository;
         this.procesoRepository = procesoRepository;
         this.actividadRepository = actividadRepository;
         this.gatewayRepository = gatewayRepository;
+        this.eventoMensajeRepository = eventoMensajeRepository;
         this.historialProcesoRepository = historialProcesoRepository;
-        this.laneRepository = laneRepository;
-        this.poolRepository = poolRepository;
     }
 
     @Override
@@ -77,7 +74,15 @@ public class ArcoServiceImpl implements ArcoService {
 
         String condicion = resolverCondicionGateway(procesoId, request);
 
-        Arco arco = new Arco();
+        Arco arco = arcoRepository
+                .findFirstByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoIdAndActivoFalseOrderByIdDesc(
+                        procesoId,
+                        request.getTipoOrigen(),
+                        request.getOrigenId(),
+                        request.getTipoDestino(),
+                        request.getDestinoId()
+                )
+                .orElseGet(Arco::new);
 
         arco.setProceso(proceso);
         arco.setTipoOrigen(request.getTipoOrigen());
@@ -86,6 +91,7 @@ public class ArcoServiceImpl implements ArcoService {
         arco.setDestinoId(request.getDestinoId());
         arco.setEtiqueta(request.getEtiqueta());
         arco.setCondicion(condicion);
+        arco.setActivo(true);
 
         arco = arcoRepository.save(arco);
 
@@ -113,7 +119,7 @@ public class ArcoServiceImpl implements ArcoService {
         obtenerProceso(procesoId, empresaId);
 
         return arcoRepository
-                .findByProcesoId(procesoId)
+                .findByProcesoIdAndActivoTrue(procesoId)
                 .stream()
                 .map(this::convertirDTO)
                 .toList();
@@ -135,7 +141,7 @@ public class ArcoServiceImpl implements ArcoService {
         validarProcesoActivo(proceso);
 
         Arco arco = arcoRepository
-                .findByIdAndProcesoId(arcoId, procesoId)
+                .findByIdAndProcesoIdAndActivoTrue(arcoId, procesoId)
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
                                 "No existe el arco indicado en este proceso"
@@ -185,7 +191,7 @@ public class ArcoServiceImpl implements ArcoService {
         validarProcesoActivo(proceso);
 
         Arco arco = arcoRepository
-                .findByIdAndProcesoId(arcoId, procesoId)
+                .findByIdAndProcesoIdAndActivoTrue(arcoId, procesoId)
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
                                 "No existe el arco indicado en este proceso"
@@ -195,11 +201,11 @@ public class ArcoServiceImpl implements ArcoService {
         List<String> advertencias = new ArrayList<>();
 
         long salidasOrigen = arcoRepository
-                .countByProcesoIdAndTipoOrigenAndOrigenId(
+                .countByProcesoIdAndTipoOrigenAndOrigenIdAndActivoTrue(
                         procesoId, arco.getTipoOrigen(), arco.getOrigenId());
 
         long entradasDestino = arcoRepository
-                .countByProcesoIdAndTipoDestinoAndDestinoId(
+                .countByProcesoIdAndTipoDestinoAndDestinoIdAndActivoTrue(
                         procesoId, arco.getTipoDestino(), arco.getDestinoId());
 
         if (salidasOrigen == 1) {
@@ -217,7 +223,8 @@ public class ArcoServiceImpl implements ArcoService {
                         + " hacia " + arco.getTipoDestino()
                         + " " + arco.getDestinoId();
 
-        arcoRepository.delete(arco);
+        arco.setActivo(false);
+        arcoRepository.save(arco);
 
         historialProcesoRepository.save(
                 new HistorialProceso(proceso, descripcion, LocalDateTime.now())
@@ -269,13 +276,13 @@ public class ArcoServiceImpl implements ArcoService {
 
         if (arcoIdActual == null) {
             duplicado = arcoRepository
-                    .existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoId(
+                    .existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoIdAndActivoTrue(
                             procesoId,
                             request.getTipoOrigen(), request.getOrigenId(),
                             request.getTipoDestino(), request.getDestinoId());
         } else {
             duplicado = arcoRepository
-                    .existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoIdAndIdNot(
+                    .existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoIdAndActivoTrueAndIdNot(
                             procesoId,
                             request.getTipoOrigen(), request.getOrigenId(),
                             request.getTipoDestino(), request.getDestinoId(),
@@ -325,6 +332,13 @@ public class ArcoServiceImpl implements ArcoService {
                     .orElse(null);
         }
 
+        if (tipoNodo == TipoNodo.EVENTO) {
+            return eventoMensajeRepository.findById(nodoId)
+                    .map(EventoMensaje::getPool)
+                    .map(Pool::getId)
+                    .orElse(null);
+        }
+
         return null;
     }
 
@@ -353,9 +367,8 @@ public class ArcoServiceImpl implements ArcoService {
         }
 
         if (tipoNodo == TipoNodo.EVENTO) {
-            throw new OperacionInvalidaException(
-                    "La validación de eventos quedará disponible al integrar la entidad Evento"
-            );
+            obtenerEventoActivo(nodoId, procesoId);
+            return;
         }
 
         throw new OperacionInvalidaException("El tipo de nodo no está soportado");
@@ -410,6 +423,20 @@ public class ArcoServiceImpl implements ArcoService {
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
                                 "El gateway " + gatewayId
+                                        + " no existe, está eliminado o no pertenece al proceso"
+                        )
+                );
+    }
+
+    private EventoMensaje obtenerEventoActivo(
+            Long eventoId,
+            Long procesoId) {
+
+        return eventoMensajeRepository
+                .findByIdAndProcesoIdAndActivoTrue(eventoId, procesoId)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "El evento " + eventoId
                                         + " no existe, está eliminado o no pertenece al proceso"
                         )
                 );

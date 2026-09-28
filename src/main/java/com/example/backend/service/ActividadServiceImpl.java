@@ -246,7 +246,7 @@ public class ActividadServiceImpl implements ActividadService {
                 );
 
         List<Arco> arcosConectados = arcoRepository
-                .findByProcesoId(procesoId)
+                .findByProcesoIdAndActivoTrue(procesoId)
                 .stream()
                 .filter(arco ->
                         (arco.getTipoOrigen() == TipoNodo.ACTIVIDAD
@@ -267,7 +267,7 @@ public class ActividadServiceImpl implements ActividadService {
 
                 long entradasDestino =
                         arcoRepository
-                                .countByProcesoIdAndTipoDestinoAndDestinoId(
+                                .countByProcesoIdAndTipoDestinoAndDestinoIdAndActivoTrue(
                                         procesoId,
                                         arco.getTipoDestino(),
                                         arco.getDestinoId()
@@ -299,7 +299,7 @@ public class ActividadServiceImpl implements ActividadService {
 
                 long salidasOrigen =
                         arcoRepository
-                                .countByProcesoIdAndTipoOrigenAndOrigenId(
+                                .countByProcesoIdAndTipoOrigenAndOrigenIdAndActivoTrue(
                                         procesoId,
                                         arco.getTipoOrigen(),
                                         arco.getOrigenId()
@@ -328,7 +328,8 @@ public class ActividadServiceImpl implements ActividadService {
         }
 
         if (!arcosConectados.isEmpty()) {
-            arcoRepository.deleteAll(arcosConectados);
+            arcosConectados.forEach(arco -> arco.setActivo(false));
+            arcoRepository.saveAll(arcosConectados);
 
             advertenciasSet.add(
                     "Se eliminaron "

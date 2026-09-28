@@ -147,7 +147,7 @@ public class GatewayServiceImpl implements GatewayService {
         TipoGateway tipoAnterior = gateway.getTipo();
 
         List<Arco> arcosSalientes = arcoRepository
-                .findByProcesoId(procesoId)
+                .findByProcesoIdAndActivoTrue(procesoId)
                 .stream()
                 .filter(arco ->
                         arco.getTipoOrigen() == TipoNodo.GATEWAY
@@ -287,7 +287,7 @@ public class GatewayServiceImpl implements GatewayService {
                 );
 
         List<Arco> arcosConectados = arcoRepository
-                .findByProcesoId(procesoId)
+                .findByProcesoIdAndActivoTrue(procesoId)
                 .stream()
                 .filter(arco ->
                         (arco.getTipoOrigen() == TipoNodo.GATEWAY
@@ -347,7 +347,8 @@ public class GatewayServiceImpl implements GatewayService {
         int cantidadArcos =
                 arcosConectados.size();
 
-        arcoRepository.deleteAll(arcosConectados);
+        arcosConectados.forEach(arco -> arco.setActivo(false));
+        arcoRepository.saveAll(arcosConectados);
 
         gateway.setActivo(false);
         gatewayRepository.save(gateway);

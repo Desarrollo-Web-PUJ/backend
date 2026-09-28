@@ -5,20 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(
-    name = "arcos",
-    uniqueConstraints = {
-        @UniqueConstraint(
-            columnNames = {
-                "proceso_id",
-                "tipo_origen",
-                "origen_id",
-                "tipo_destino",
-                "destino_id"
-            }
-        )
-    }
-)
+@Table(name = "arcos")
 @Getter
 @Setter
 public class Arco {
@@ -50,4 +37,7 @@ public class Arco {
 
     @Column
     private String condicion;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean activo = true;
 }

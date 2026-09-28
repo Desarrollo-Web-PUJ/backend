@@ -9,14 +9,14 @@ import java.util.Optional;
 
 public interface ArcoRepository extends JpaRepository<Arco, Long> {
 
-    List<Arco> findByProcesoId(Long procesoId);
+    List<Arco> findByProcesoIdAndActivoTrue(Long procesoId);
 
-    Optional<Arco> findByIdAndProcesoId(
+    Optional<Arco> findByIdAndProcesoIdAndActivoTrue(
             Long id,
             Long procesoId
     );
 
-    boolean existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoId(
+    Optional<Arco> findFirstByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoIdAndActivoFalseOrderByIdDesc(
             Long procesoId,
             TipoNodo tipoOrigen,
             Long origenId,
@@ -24,7 +24,15 @@ public interface ArcoRepository extends JpaRepository<Arco, Long> {
             Long destinoId
     );
 
-    boolean existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoIdAndIdNot(
+    boolean existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoIdAndActivoTrue(
+            Long procesoId,
+            TipoNodo tipoOrigen,
+            Long origenId,
+            TipoNodo tipoDestino,
+            Long destinoId
+    );
+
+    boolean existsByProcesoIdAndTipoOrigenAndOrigenIdAndTipoDestinoAndDestinoIdAndActivoTrueAndIdNot(
             Long procesoId,
             TipoNodo tipoOrigen,
             Long origenId,
@@ -33,13 +41,13 @@ public interface ArcoRepository extends JpaRepository<Arco, Long> {
             Long id
     );
 
-    long countByProcesoIdAndTipoOrigenAndOrigenId(
+    long countByProcesoIdAndTipoOrigenAndOrigenIdAndActivoTrue(
             Long procesoId,
             TipoNodo tipoOrigen,
             Long origenId
     );
 
-    long countByProcesoIdAndTipoDestinoAndDestinoId(
+    long countByProcesoIdAndTipoDestinoAndDestinoIdAndActivoTrue(
             Long procesoId,
             TipoNodo tipoDestino,
             Long destinoId
