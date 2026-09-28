@@ -25,46 +25,79 @@ public class ProcesoServiceImpl implements ProcesoService {
     private final HistorialProcesoRepository historialProcesoRepository;
     private final LaneService laneService;
     private final ActividadService actividadService;
+    private final GatewayService gatewayService;
     private final ArcoService arcoService;
 
-    public ProcesoServiceImpl(ProcesoRepository procesoRepository,
-                              EmpresaRepository empresaRepository,
-                              UsuarioRepository usuarioRepository,
-                              HistorialProcesoRepository historialProcesoRepository,
-                              LaneService laneService,
-                              ActividadService actividadService,
-                              ArcoService arcoService) {
+    public ProcesoServiceImpl(
+            ProcesoRepository procesoRepository,
+            EmpresaRepository empresaRepository,
+            UsuarioRepository usuarioRepository,
+            HistorialProcesoRepository historialProcesoRepository,
+            LaneService laneService,
+            ActividadService actividadService,
+            GatewayService gatewayService,
+            ArcoService arcoService) {
+
         this.procesoRepository = procesoRepository;
         this.empresaRepository = empresaRepository;
         this.usuarioRepository = usuarioRepository;
         this.historialProcesoRepository = historialProcesoRepository;
         this.laneService = laneService;
         this.actividadService = actividadService;
+        this.gatewayService = gatewayService;
         this.arcoService = arcoService;
     }
 
     @Override
     @Transactional
-    public ProcesoResponseDTO crearProceso(Long empresaId, Long usuarioId, ProcesoCrearRequestDTO request) {
-        if (request.getNombre() == null || request.getNombre().isBlank()) {
-            throw new IllegalArgumentException("El nombre del proceso es obligatorio");
+    public ProcesoResponseDTO crearProceso(
+            Long empresaId,
+            Long usuarioId,
+            ProcesoCrearRequestDTO request) {
+
+        if (request.getNombre() == null
+                || request.getNombre().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "El nombre del proceso es obligatorio"
+            );
         }
 
-        if (request.getCategoria() == null || request.getCategoria().isBlank()) {
-            throw new IllegalArgumentException("La categoria es obligatoria");
+        if (request.getCategoria() == null
+                || request.getCategoria().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "La categoria es obligatoria"
+            );
         }
 
-        if (procesoRepository.existsByNombreAndEmpresaId(request.getNombre(), empresaId)) {
-            throw new IllegalArgumentException("Ya existe un proceso con ese nombre en la empresa");
+        if (procesoRepository.existsByNombreAndEmpresaId(
+                request.getNombre(),
+                empresaId)) {
+
+            throw new IllegalArgumentException(
+                    "Ya existe un proceso con ese nombre en la empresa"
+            );
         }
 
-        Empresa empresa = empresaRepository.findById(empresaId)
-                .orElseThrow(() -> new IllegalArgumentException("La empresa no existe"));
+        Empresa empresa = empresaRepository
+                .findById(empresaId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "La empresa no existe"
+                        )
+                );
 
-        Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new IllegalArgumentException("El usuario no existe"));
+        Usuario usuario = usuarioRepository
+                .findById(usuarioId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "El usuario no existe"
+                        )
+                );
 
         Proceso proceso = new Proceso();
+
         proceso.setNombre(request.getNombre());
         proceso.setDescripcion(request.getDescripcion());
         proceso.setCategoria(request.getCategoria());
@@ -76,8 +109,11 @@ public class ProcesoServiceImpl implements ProcesoService {
 
         registrarHistorial(
                 proceso,
-                "Se creo el proceso '" + proceso.getNombre()
-                        + "' (usuario: " + usuario.getNombre() + ")"
+                "Se creo el proceso '"
+                        + proceso.getNombre()
+                        + "' (usuario: "
+                        + usuario.getNombre()
+                        + ")"
         );
 
         return toResponseDTO(proceso);
@@ -85,30 +121,43 @@ public class ProcesoServiceImpl implements ProcesoService {
 
     @Override
     @Transactional
-    public ProcesoResponseDTO editarProceso(Long procesoId,
-                                            Long empresaId,
-                                            Long usuarioId,
-                                            RolUsuario rol,
-                                            ProcesoEditarRequestDTO request) {
+    public ProcesoResponseDTO editarProceso(
+            Long procesoId,
+            Long empresaId,
+            Long usuarioId,
+            RolUsuario rol,
+            ProcesoEditarRequestDTO request) {
 
-        if (rol != RolUsuario.ADMINISTRADOR && rol != RolUsuario.EDITOR) {
+        if (rol != RolUsuario.ADMINISTRADOR
+                && rol != RolUsuario.EDITOR) {
+
             throw new PermisoDenegadoException(
                     "No tienes permisos para editar procesos"
             );
         }
 
         Proceso proceso = procesoRepository
-                .findByIdAndEmpresaId(procesoId, empresaId)
+                .findByIdAndEmpresaId(
+                        procesoId,
+                        empresaId
+                )
                 .orElseThrow(() ->
-                        new IllegalArgumentException("El proceso no existe")
+                        new IllegalArgumentException(
+                                "El proceso no existe"
+                        )
                 );
 
-        Usuario usuario = usuarioRepository.findById(usuarioId)
+        Usuario usuario = usuarioRepository
+                .findById(usuarioId)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("El usuario no existe")
+                        new IllegalArgumentException(
+                                "El usuario no existe"
+                        )
                 );
 
-        if (request.getNombre() == null || request.getNombre().isBlank()) {
+        if (request.getNombre() == null
+                || request.getNombre().isBlank()) {
+
             throw new IllegalArgumentException(
                     "El nombre del proceso es obligatorio"
             );
@@ -116,6 +165,7 @@ public class ProcesoServiceImpl implements ProcesoService {
 
         if (request.getCategoria() == null
                 || request.getCategoria().isBlank()) {
+
             throw new IllegalArgumentException(
                     "La categoria es obligatoria"
             );
@@ -127,7 +177,8 @@ public class ProcesoServiceImpl implements ProcesoService {
             );
         }
 
-        if (!proceso.getNombre().equalsIgnoreCase(request.getNombre())
+        if (!proceso.getNombre()
+                .equalsIgnoreCase(request.getNombre())
                 && procesoRepository
                 .existsByNombreAndEmpresaIdAndIdNot(
                         request.getNombre(),
@@ -149,8 +200,11 @@ public class ProcesoServiceImpl implements ProcesoService {
 
         registrarHistorial(
                 proceso,
-                "Se edito el proceso '" + proceso.getNombre()
-                        + "' (usuario: " + usuario.getNombre() + ")"
+                "Se edito el proceso '"
+                        + proceso.getNombre()
+                        + "' (usuario: "
+                        + usuario.getNombre()
+                        + ")"
         );
 
         return toResponseDTO(proceso);
@@ -158,10 +212,11 @@ public class ProcesoServiceImpl implements ProcesoService {
 
     @Override
     @Transactional
-    public void eliminarProceso(Long procesoId,
-                                Long empresaId,
-                                Long usuarioId,
-                                RolUsuario rol) {
+    public void eliminarProceso(
+            Long procesoId,
+            Long empresaId,
+            Long usuarioId,
+            RolUsuario rol) {
 
         if (rol != RolUsuario.ADMINISTRADOR) {
             throw new PermisoDenegadoException(
@@ -170,14 +225,22 @@ public class ProcesoServiceImpl implements ProcesoService {
         }
 
         Proceso proceso = procesoRepository
-                .findByIdAndEmpresaId(procesoId, empresaId)
+                .findByIdAndEmpresaId(
+                        procesoId,
+                        empresaId
+                )
                 .orElseThrow(() ->
-                        new IllegalArgumentException("El proceso no existe")
+                        new IllegalArgumentException(
+                                "El proceso no existe"
+                        )
                 );
 
-        Usuario usuario = usuarioRepository.findById(usuarioId)
+        Usuario usuario = usuarioRepository
+                .findById(usuarioId)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("El usuario no existe")
+                        new IllegalArgumentException(
+                                "El usuario no existe"
+                        )
                 );
 
         proceso.setActivo(false);
@@ -193,53 +256,77 @@ public class ProcesoServiceImpl implements ProcesoService {
         );
     }
 
-  @Override
-public Page<ProcesoListItemDTO> listarProcesos(
-        Long empresaId,
-        String nombre,
-        EstadoProceso estado,
-        String categoria,
-        boolean incluirInactivos,
-        Pageable pageable) {
+    @Override
+    public Page<ProcesoListItemDTO> listarProcesos(
+            Long empresaId,
+            String nombre,
+            EstadoProceso estado,
+            String categoria,
+            boolean incluirInactivos,
+            Pageable pageable) {
 
-    String nombreFiltro = nombre == null ? "" : nombre.trim();
+        String nombreFiltro =
+                nombre == null
+                        ? ""
+                        : nombre.trim();
 
-    return procesoRepository
-            .buscar(
-                    empresaId,
-                    incluirInactivos,
-                    nombreFiltro,
-                    estado,
-                    categoria,
-                    pageable
-            )
-            .map(p -> new ProcesoListItemDTO(
-                    p.getId(),
-                    p.getNombre(),
-                    p.getCategoria(),
-                    p.getEstado(),
-                    p.getActivo()
-            ));
-}
+        return procesoRepository
+                .buscar(
+                        empresaId,
+                        incluirInactivos,
+                        nombreFiltro,
+                        estado,
+                        categoria,
+                        pageable
+                )
+                .map(p ->
+                        new ProcesoListItemDTO(
+                                p.getId(),
+                                p.getNombre(),
+                                p.getCategoria(),
+                                p.getEstado(),
+                                p.getActivo()
+                        )
+                );
+    }
+
     @Override
     public ProcesoDetalleDTO obtenerDetalle(
             Long procesoId,
             Long empresaId) {
 
         Proceso proceso = procesoRepository
-                .findByIdAndEmpresaId(procesoId, empresaId)
+                .findByIdAndEmpresaId(
+                        procesoId,
+                        empresaId
+                )
                 .orElseThrow(() ->
-                        new IllegalArgumentException("El proceso no existe")
+                        new IllegalArgumentException(
+                                "El proceso no existe"
+                        )
                 );
 
         List<LaneDTO> lanes =
-                laneService.listarPorProceso(procesoId);
+                laneService.listarPorProceso(
+                        procesoId
+                );
 
         List<ActividadDTO> actividades =
-                actividadService.listarPorProceso(procesoId);
+                actividadService.listarPorProceso(
+                        procesoId
+                );
+
+        List<GatewayResponseDTO> gateways =
+                gatewayService.listarPorProceso(
+                        procesoId,
+                        empresaId
+                );
 
         List<ArcoResponseDTO> arcos =
-                arcoService.listarPorProceso(procesoId, empresaId);
+                arcoService.listarPorProceso(
+                        procesoId,
+                        empresaId
+                );
 
         return new ProcesoDetalleDTO(
                 proceso.getId(),
@@ -250,6 +337,7 @@ public Page<ProcesoListItemDTO> listarProcesos(
                 proceso.getActivo(),
                 lanes,
                 actividades,
+                gateways,
                 arcos
         );
     }
@@ -260,19 +348,28 @@ public Page<ProcesoListItemDTO> listarProcesos(
             Long empresaId) {
 
         procesoRepository
-                .findByIdAndEmpresaId(procesoId, empresaId)
+                .findByIdAndEmpresaId(
+                        procesoId,
+                        empresaId
+                )
                 .orElseThrow(() ->
-                        new IllegalArgumentException("El proceso no existe")
+                        new IllegalArgumentException(
+                                "El proceso no existe"
+                        )
                 );
 
         return historialProcesoRepository
-                .findByProcesoIdOrderByFechaDesc(procesoId)
+                .findByProcesoIdOrderByFechaDesc(
+                        procesoId
+                )
                 .stream()
-                .map(h -> new HistorialProcesoDTO(
-                        h.getId(),
-                        h.getDescripcion(),
-                        h.getFecha()
-                ))
+                .map(h ->
+                        new HistorialProcesoDTO(
+                                h.getId(),
+                                h.getDescripcion(),
+                                h.getFecha()
+                        )
+                )
                 .collect(Collectors.toList());
     }
 

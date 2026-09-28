@@ -14,12 +14,21 @@ public class ProcesoDetalleDTO {
     private Boolean activo;
     private List<LaneDTO> lanes;
     private List<ActividadDTO> actividades;
+    private List<GatewayResponseDTO> gateways;
     private List<ArcoResponseDTO> arcos;
 
-    public ProcesoDetalleDTO(Long id, String nombre, String descripcion, String categoria,
-                             EstadoProceso estado, Boolean activo,
-                             List<LaneDTO> lanes, List<ActividadDTO> actividades,
-                             List<ArcoResponseDTO> arcos) {
+    public ProcesoDetalleDTO(
+            Long id,
+            String nombre,
+            String descripcion,
+            String categoria,
+            EstadoProceso estado,
+            Boolean activo,
+            List<LaneDTO> lanes,
+            List<ActividadDTO> actividades,
+            List<GatewayResponseDTO> gateways,
+            List<ArcoResponseDTO> arcos) {
+
         this.id = id;
         this.nombre = nombre;
         this.descripcion = descripcion;
@@ -28,6 +37,7 @@ public class ProcesoDetalleDTO {
         this.activo = activo;
         this.lanes = lanes;
         this.actividades = actividades;
+        this.gateways = gateways;
         this.arcos = arcos;
     }
 
@@ -61,6 +71,10 @@ public class ProcesoDetalleDTO {
 
     public List<ActividadDTO> getActividades() {
         return actividades;
+    }
+
+    public List<GatewayResponseDTO> getGateways() {
+        return gateways;
     }
 
     public List<ArcoResponseDTO> getArcos() {

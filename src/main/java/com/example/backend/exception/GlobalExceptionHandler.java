@@ -42,6 +42,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
+    @ExceptionHandler(SesionNoAutenticadaException.class)
+    public ResponseEntity<Map<String, String>> manejarSesionNoAutenticada(
+            SesionNoAutenticadaException ex) {
+
+        Map<String, String> error = new HashMap<>();
+        error.put("mensaje", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> manejarValidacion(
             MethodArgumentNotValidException ex) {
