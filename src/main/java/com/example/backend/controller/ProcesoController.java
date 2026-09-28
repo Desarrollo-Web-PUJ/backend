@@ -8,6 +8,7 @@ import com.example.backend.dto.ProcesoListItemDTO;
 import com.example.backend.dto.ProcesoResponseDTO;
 import com.example.backend.entity.EstadoProceso;
 import com.example.backend.entity.RolUsuario;
+import com.example.backend.exception.OperacionInvalidaException;
 import com.example.backend.service.ProcesoService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.data.domain.Page;
@@ -149,7 +150,14 @@ public class ProcesoController {
     @ResponseBody
     public ResponseEntity<Void> eliminar(
             @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean confirmar,
             HttpSession session) {
+
+        if (!confirmar) {
+            throw new OperacionInvalidaException(
+                    "Debe confirmar la eliminación del proceso"
+            );
+        }
 
         Long empresaId = obtenerEmpresaId(session);
         Long usuarioId = obtenerUsuarioId(session);

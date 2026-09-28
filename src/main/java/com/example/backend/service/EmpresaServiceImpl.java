@@ -30,22 +30,28 @@ public class EmpresaServiceImpl implements EmpresaService {
     @Override
     @Transactional
     public EmpresaResponseDTO registrarEmpresa(EmpresaRegistroRequestDTO request) {
-        if (empresaRepository.existsByNit(request.getNit())) {
+        String nombre = normalizar(request.getNombre());
+        String nit = normalizar(request.getNit());
+        String correoContacto = normalizar(request.getCorreoContacto());
+        String adminNombre = normalizar(request.getAdminNombre());
+        String adminCorreo = normalizar(request.getAdminCorreo());
+
+        if (empresaRepository.existsByNitIgnoreCase(nit)) {
             throw new RecursoDuplicadoException("Ya existe una empresa registrada con ese NIT");
         }
-        if (usuarioRepository.existsByCorreo(request.getAdminCorreo())) {
+        if (usuarioRepository.existsByCorreoIgnoreCase(adminCorreo)) {
             throw new RecursoDuplicadoException("Ya existe un usuario registrado con ese correo");
         }
 
         Empresa empresa = new Empresa();
-        empresa.setNombre(request.getNombre());
-        empresa.setNit(request.getNit());
-        empresa.setCorreoContacto(request.getCorreoContacto());
+        empresa.setNombre(nombre);
+        empresa.setNit(nit);
+        empresa.setCorreoContacto(correoContacto);
         empresa = empresaRepository.save(empresa);
 
         Usuario admin = new Usuario();
-        admin.setNombre(request.getAdminNombre());
-        admin.setCorreo(request.getAdminCorreo());
+        admin.setNombre(adminNombre);
+        admin.setCorreo(adminCorreo);
         admin.setPassword(passwordEncoder.encode(request.getAdminPassword()));
         admin.setRol(RolUsuario.ADMINISTRADOR);
         admin.setActivo(true);
@@ -59,5 +65,9 @@ public class EmpresaServiceImpl implements EmpresaService {
                 empresa.getCorreoContacto(),
                 admin.getId()
         );
+    }
+
+    private String normalizar(String valor) {
+        return valor == null ? null : valor.trim();
     }
 }

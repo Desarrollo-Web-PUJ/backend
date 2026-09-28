@@ -69,8 +69,10 @@ public class ActividadServiceImpl implements ActividadService {
         validarProcesoActivo(proceso);
         validarDatosActividad(request);
 
+        String nombre = request.getNombre().trim();
+
         if (actividadRepository.existsByNombreAndProcesoId(
-                request.getNombre(),
+                nombre,
                 procesoId)) {
 
             throw new RecursoDuplicadoException(
@@ -85,7 +87,7 @@ public class ActividadServiceImpl implements ActividadService {
 
         Actividad actividad = new Actividad();
 
-        actividad.setNombre(request.getNombre().trim());
+        actividad.setNombre(nombre);
         actividad.setTipo(request.getTipo());
         actividad.setProceso(proceso);
         actividad.setLane(lane);
@@ -156,9 +158,11 @@ public class ActividadServiceImpl implements ActividadService {
 
         validarDatosActividad(request);
 
+        String nombre = request.getNombre().trim();
+
         if (actividadRepository
                 .existsByNombreAndProcesoIdAndIdNot(
-                        request.getNombre(),
+                        nombre,
                         procesoId,
                         actividadId
                 )) {
@@ -173,10 +177,17 @@ public class ActividadServiceImpl implements ActividadService {
                 procesoId
         );
 
+        validarCambioDePoolConArcos(
+                procesoId,
+                actividadId,
+                actividad.getLane(),
+                lane
+        );
+
         String nombreAnterior = actividad.getNombre();
         String laneAnterior = actividad.getLane().getNombre();
 
-        actividad.setNombre(request.getNombre().trim());
+        actividad.setNombre(nombre);
         actividad.setTipo(request.getTipo());
         actividad.setLane(lane);
         actividad.setPosicionX(request.getPosicionX());
@@ -488,6 +499,43 @@ public class ActividadServiceImpl implements ActividadService {
         }
 
         return lane;
+    }
+
+    private void validarCambioDePoolConArcos(
+            Long procesoId,
+            Long actividadId,
+            Lane laneActual,
+            Lane nuevaLane) {
+
+        if (laneActual.getPool() == null) {
+            throw new OperacionInvalidaException(
+                    "La lane actual de la actividad no pertenece a un pool"
+            );
+        }
+
+        Long poolActualId = laneActual.getPool().getId();
+        Long nuevoPoolId = nuevaLane.getPool().getId();
+
+        if (poolActualId.equals(nuevoPoolId)) {
+            return;
+        }
+
+        boolean tieneArcosConectados = arcoRepository
+                .findByProcesoIdAndActivoTrue(procesoId)
+                .stream()
+                .anyMatch(arco ->
+                        (arco.getTipoOrigen() == TipoNodo.ACTIVIDAD
+                                && actividadId.equals(arco.getOrigenId()))
+                                ||
+                        (arco.getTipoDestino() == TipoNodo.ACTIVIDAD
+                                && actividadId.equals(arco.getDestinoId()))
+                );
+
+        if (tieneArcosConectados) {
+            throw new OperacionInvalidaException(
+                    "No se puede mover una actividad a otro pool mientras tenga arcos activos conectados"
+            );
+        }
     }
 
     private ActividadDTO toDTO(

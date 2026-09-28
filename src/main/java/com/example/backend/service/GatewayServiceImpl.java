@@ -146,6 +146,13 @@ public class GatewayServiceImpl implements GatewayService {
 
         TipoGateway tipoAnterior = gateway.getTipo();
 
+        validarCambioDePoolConArcos(
+                procesoId,
+                gatewayId,
+                gateway.getPool(),
+                pool
+        );
+
         List<Arco> arcosSalientes = arcoRepository
                 .findByProcesoIdAndActivoTrue(procesoId)
                 .stream()
@@ -453,6 +460,35 @@ public class GatewayServiceImpl implements GatewayService {
         }
 
         return pool;
+    }
+
+    private void validarCambioDePoolConArcos(
+            Long procesoId,
+            Long gatewayId,
+            Pool poolActual,
+            Pool nuevoPool) {
+
+        if (poolActual == null
+                || poolActual.getId().equals(nuevoPool.getId())) {
+            return;
+        }
+
+        boolean tieneArcosConectados = arcoRepository
+                .findByProcesoIdAndActivoTrue(procesoId)
+                .stream()
+                .anyMatch(arco ->
+                        (arco.getTipoOrigen() == TipoNodo.GATEWAY
+                                && gatewayId.equals(arco.getOrigenId()))
+                                ||
+                        (arco.getTipoDestino() == TipoNodo.GATEWAY
+                                && gatewayId.equals(arco.getDestinoId()))
+                );
+
+        if (tieneArcosConectados) {
+            throw new OperacionInvalidaException(
+                    "No se puede mover un gateway a otro pool mientras tenga arcos activos conectados"
+            );
+        }
     }
 
     private GatewayResponseDTO convertirDTO(

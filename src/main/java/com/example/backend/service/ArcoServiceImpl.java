@@ -18,6 +18,7 @@ import com.example.backend.entity.Pool;
 import com.example.backend.entity.Proceso;
 import com.example.backend.entity.RolUsuario;
 import com.example.backend.entity.TipoGateway;
+import com.example.backend.entity.TipoEventoMensaje;
 import com.example.backend.entity.TipoNodo;
 import com.example.backend.entity.EventoMensaje;
 import com.example.backend.exception.OperacionInvalidaException;
@@ -266,6 +267,7 @@ public class ArcoServiceImpl implements ArcoService {
 
         validarNodo(request.getTipoOrigen(), request.getOrigenId(), procesoId);
         validarNodo(request.getTipoDestino(), request.getDestinoId(), procesoId);
+        validarReglasEventosMensaje(request, procesoId);
 
         validarMismoPool(
                 request.getTipoOrigen(), request.getOrigenId(),
@@ -291,6 +293,20 @@ public class ArcoServiceImpl implements ArcoService {
 
         if (duplicado) {
             throw new RecursoDuplicadoException("Ya existe un arco entre esos dos nodos");
+        }
+    }
+
+    private void validarReglasEventosMensaje(
+            ArcoRequestDTO request,
+            Long procesoId) {
+
+        if (request.getTipoDestino() == TipoNodo.EVENTO) {
+            EventoMensaje destino = obtenerEventoActivo(request.getDestinoId(), procesoId);
+            if (destino.getTipo() == TipoEventoMensaje.CATCH_INICIO) {
+                throw new OperacionInvalidaException(
+                        "Un Message Catch de inicio no puede tener arcos entrantes"
+                );
+            }
         }
     }
 

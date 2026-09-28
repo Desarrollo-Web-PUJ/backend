@@ -207,13 +207,18 @@ public class ProcesoServiceImpl implements ProcesoService {
             );
         }
 
-        if (request.getCategoria() == null
-                || request.getCategoria().isBlank()) {
+        String nombre = request.getNombre().trim();
+        String categoria = request.getCategoria();
+
+        if (categoria == null
+                || categoria.isBlank()) {
 
             throw new OperacionInvalidaException(
                     "La categoria es obligatoria"
             );
         }
+
+        categoria = categoria.trim();
 
         if (request.getEstado() == null) {
             throw new OperacionInvalidaException(
@@ -221,11 +226,16 @@ public class ProcesoServiceImpl implements ProcesoService {
             );
         }
 
+        validarProcesoActivo(
+                proceso,
+                "No se puede editar un proceso eliminado"
+        );
+
         if (!proceso.getNombre()
-                .equalsIgnoreCase(request.getNombre())
+                .equalsIgnoreCase(nombre)
                 && procesoRepository
                 .existsByNombreAndEmpresaIdAndIdNot(
-                        request.getNombre(),
+                        nombre,
                         empresaId,
                         procesoId
                 )) {
@@ -235,9 +245,9 @@ public class ProcesoServiceImpl implements ProcesoService {
             );
         }
 
-        proceso.setNombre(request.getNombre());
-        proceso.setDescripcion(request.getDescripcion());
-        proceso.setCategoria(request.getCategoria());
+        proceso.setNombre(nombre);
+        proceso.setDescripcion(normalizar(request.getDescripcion()));
+        proceso.setCategoria(categoria);
         proceso.setEstado(request.getEstado());
 
         proceso = procesoRepository.save(proceso);
@@ -286,6 +296,11 @@ public class ProcesoServiceImpl implements ProcesoService {
                                 "El usuario no existe"
                         )
                 );
+
+        validarProcesoActivo(
+                proceso,
+                "El proceso ya está eliminado"
+        );
 
         proceso.setActivo(false);
         procesoRepository.save(proceso);
@@ -613,6 +628,19 @@ public class ProcesoServiceImpl implements ProcesoService {
                         LocalDateTime.now()
                 )
         );
+    }
+
+    private void validarProcesoActivo(
+            Proceso proceso,
+            String mensaje) {
+
+        if (!Boolean.TRUE.equals(proceso.getActivo())) {
+            throw new OperacionInvalidaException(mensaje);
+        }
+    }
+
+    private String normalizar(String valor) {
+        return valor == null ? null : valor.trim();
     }
 
     private ProcesoResponseDTO toResponseDTO(
