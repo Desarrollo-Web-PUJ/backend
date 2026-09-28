@@ -13,7 +13,9 @@ public class ActividadDTO {
     private Double posicionX;
     private Double posicionY;
 
-    public ActividadDTO() {}
+    public ActividadDTO() {
+        // Constructor vacío requerido por Jackson para deserializar JSON
+    }
 
     // getters y setters
     public Long getId() { return id; }
