@@ -12,6 +12,9 @@ public class GatewayRequestDTO {
     @NotNull
     private TipoGateway tipo;
 
+    @NotNull(message = "El pool del gateway es obligatorio")
+    private Long poolId;
+
     private Double posicionX;
 
     private Double posicionY;

@@ -7,16 +7,19 @@ import com.example.backend.dto.GatewayResponseDTO;
 import com.example.backend.entity.Arco;
 import com.example.backend.entity.Gateway;
 import com.example.backend.entity.HistorialProceso;
+import com.example.backend.entity.Pool;
 import com.example.backend.entity.Proceso;
 import com.example.backend.entity.RolUsuario;
 import com.example.backend.entity.TipoGateway;
 import com.example.backend.entity.TipoNodo;
+import com.example.backend.entity.TipoPool;
 import com.example.backend.exception.OperacionInvalidaException;
 import com.example.backend.exception.PermisoDenegadoException;
 import com.example.backend.exception.RecursoNoEncontradoException;
 import com.example.backend.repository.ArcoRepository;
 import com.example.backend.repository.GatewayRepository;
 import com.example.backend.repository.HistorialProcesoRepository;
+import com.example.backend.repository.PoolRepository;
 import com.example.backend.repository.ProcesoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,17 +35,20 @@ public class GatewayServiceImpl implements GatewayService {
     private final ProcesoRepository procesoRepository;
     private final HistorialProcesoRepository historialProcesoRepository;
     private final ArcoRepository arcoRepository;
+    private final PoolRepository poolRepository;
 
     public GatewayServiceImpl(
             GatewayRepository gatewayRepository,
             ProcesoRepository procesoRepository,
             HistorialProcesoRepository historialProcesoRepository,
-            ArcoRepository arcoRepository) {
+            ArcoRepository arcoRepository,
+            PoolRepository poolRepository) {
 
         this.gatewayRepository = gatewayRepository;
         this.procesoRepository = procesoRepository;
         this.historialProcesoRepository = historialProcesoRepository;
         this.arcoRepository = arcoRepository;
+        this.poolRepository = poolRepository;
     }
 
     @Override
@@ -62,11 +68,13 @@ public class GatewayServiceImpl implements GatewayService {
 
         validarProcesoActivo(proceso);
         validarRequest(request);
+        Pool pool = obtenerPoolValido(request.getPoolId(), procesoId);
 
         Gateway gateway = new Gateway();
 
         gateway.setTipo(request.getTipo());
         gateway.setProceso(proceso);
+        gateway.setPool(pool);
         gateway.setPosicionX(request.getPosicionX());
         gateway.setPosicionY(request.getPosicionY());
         gateway.setActivo(true);
@@ -123,6 +131,7 @@ public class GatewayServiceImpl implements GatewayService {
 
         validarProcesoActivo(proceso);
         validarRequest(request);
+        Pool pool = obtenerPoolValido(request.getPoolId(), procesoId);
 
         Gateway gateway = gatewayRepository
                 .findByIdAndProcesoIdAndActivoTrue(
@@ -219,6 +228,7 @@ public class GatewayServiceImpl implements GatewayService {
         }
 
         gateway.setTipo(request.getTipo());
+        gateway.setPool(pool);
         gateway.setPosicionX(request.getPosicionX());
         gateway.setPosicionY(request.getPosicionY());
 
@@ -413,6 +423,35 @@ public class GatewayServiceImpl implements GatewayService {
                     "El tipo de gateway es obligatorio"
             );
         }
+
+        if (request.getPoolId() == null) {
+            throw new OperacionInvalidaException(
+                    "Debe indicar el pool del gateway"
+            );
+        }
+    }
+
+    private Pool obtenerPoolValido(Long poolId, Long procesoId) {
+        Pool pool = poolRepository.findByIdAndProcesoId(poolId, procesoId)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "El pool indicado no existe en este proceso"
+                        )
+                );
+
+        if (!Boolean.TRUE.equals(pool.getActivo())) {
+            throw new OperacionInvalidaException(
+                    "El pool indicado está eliminado"
+            );
+        }
+
+        if (pool.getTipo() == TipoPool.EXTERNO) {
+            throw new OperacionInvalidaException(
+                    "Un pool externo no puede contener gateways"
+            );
+        }
+
+        return pool;
     }
 
     private GatewayResponseDTO convertirDTO(
@@ -425,6 +464,9 @@ public class GatewayServiceImpl implements GatewayService {
         dto.setProcesoId(
                 gateway.getProceso().getId()
         );
+        if (gateway.getPool() != null) {
+            dto.setPoolId(gateway.getPool().getId());
+        }
         dto.setTipo(gateway.getTipo());
         dto.setPosicionX(
                 gateway.getPosicionX()

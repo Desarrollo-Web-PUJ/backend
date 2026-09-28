@@ -11,11 +11,14 @@ public interface ActividadService {
 
     ActividadDTO crearActividad(
             Long procesoId,
-            ActividadRequestDTO request
+            ActividadRequestDTO request,
+            Long empresaId,
+            RolUsuario rol
     );
 
     List<ActividadDTO> listarPorProceso(
-            Long procesoId
+            Long procesoId,
+            Long empresaId
     );
 
     // HU-09: Editar actividad

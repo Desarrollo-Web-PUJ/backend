@@ -13,6 +13,8 @@ import com.example.backend.exception.PermisoDenegadoException;
 import com.example.backend.exception.RecursoDuplicadoException;
 import com.example.backend.exception.RecursoNoEncontradoException;
 import com.example.backend.repository.HistorialProcesoRepository;
+import com.example.backend.repository.EventoMensajeRepository;
+import com.example.backend.repository.GatewayRepository;
 import com.example.backend.repository.LaneRepository;
 import com.example.backend.repository.PoolRepository;
 import com.example.backend.repository.ProcesoRepository;
@@ -28,16 +30,22 @@ public class PoolServiceImpl implements PoolService {
     private final PoolRepository poolRepository;
     private final ProcesoRepository procesoRepository;
     private final LaneRepository laneRepository;
+    private final GatewayRepository gatewayRepository;
+    private final EventoMensajeRepository eventoMensajeRepository;
     private final HistorialProcesoRepository historialProcesoRepository;
 
     public PoolServiceImpl(
             PoolRepository poolRepository,
             ProcesoRepository procesoRepository,
             LaneRepository laneRepository,
+            GatewayRepository gatewayRepository,
+            EventoMensajeRepository eventoMensajeRepository,
             HistorialProcesoRepository historialProcesoRepository) {
         this.poolRepository = poolRepository;
         this.procesoRepository = procesoRepository;
         this.laneRepository = laneRepository;
+        this.gatewayRepository = gatewayRepository;
+        this.eventoMensajeRepository = eventoMensajeRepository;
         this.historialProcesoRepository = historialProcesoRepository;
     }
 
@@ -62,6 +70,11 @@ public class PoolServiceImpl implements PoolService {
 
         if (poolRepository.existsByProcesoIdAndNombreIgnoreCaseAndActivoTrue(procesoId, request.getNombre())) {
             throw new RecursoDuplicadoException("Ya existe un pool con ese nombre en este proceso");
+        }
+
+        if (request.getTipo() == TipoPool.PROPIO
+                && poolRepository.existsByProcesoIdAndTipoAndActivoTrue(procesoId, TipoPool.PROPIO)) {
+            throw new OperacionInvalidaException("El proceso ya tiene definido el pool propio de la empresa");
         }
 
         Pool pool = new Pool();
@@ -91,6 +104,19 @@ public class PoolServiceImpl implements PoolService {
         if (poolRepository.existsByProcesoIdAndNombreIgnoreCaseAndIdNotAndActivoTrue(
                 procesoId, request.getNombre(), poolId)) {
             throw new RecursoDuplicadoException("Ya existe otro pool con ese nombre en este proceso");
+        }
+
+        if (pool.getTipo() == TipoPool.PROPIO
+                && request.getTipo() != TipoPool.PROPIO
+                && poolRepository.countByProcesoIdAndTipoAndActivoTrue(procesoId, TipoPool.PROPIO) <= 1) {
+            throw new OperacionInvalidaException(
+                    "El proceso debe conservar su pool propio de empresa");
+        }
+
+        if (pool.getTipo() != TipoPool.PROPIO
+                && request.getTipo() == TipoPool.PROPIO
+                && poolRepository.existsByProcesoIdAndTipoAndActivoTrue(procesoId, TipoPool.PROPIO)) {
+            throw new OperacionInvalidaException("El proceso ya tiene definido el pool propio de la empresa");
         }
 
         // Un pool EXTERNO es caja negra: no puede convertirse en PROPIO si ya tiene lanes,
@@ -127,6 +153,22 @@ public class PoolServiceImpl implements PoolService {
         if (tieneLanes) {
             throw new OperacionInvalidaException(
                     "No se puede eliminar el pool: primero elimine o reasigne sus lanes");
+        }
+
+        if (gatewayRepository.existsByPoolIdAndActivoTrue(poolId)) {
+            throw new OperacionInvalidaException(
+                    "No se puede eliminar el pool: primero elimine sus gateways");
+        }
+
+        if (eventoMensajeRepository.existsByPoolIdAndActivoTrue(poolId)) {
+            throw new OperacionInvalidaException(
+                    "No se puede eliminar el pool: primero elimine sus eventos de mensaje");
+        }
+
+        if (pool.getTipo() == TipoPool.PROPIO
+                && poolRepository.countByProcesoIdAndTipoAndActivoTrue(procesoId, TipoPool.PROPIO) <= 1) {
+            throw new OperacionInvalidaException(
+                    "No se puede eliminar el pool propio de la empresa");
         }
 
         pool.setActivo(false);

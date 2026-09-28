@@ -5,6 +5,7 @@ import com.example.backend.entity.*;
 import com.example.backend.exception.PermisoDenegadoException;
 import com.example.backend.repository.EmpresaRepository;
 import com.example.backend.repository.HistorialProcesoRepository;
+import com.example.backend.repository.PoolRepository;
 import com.example.backend.repository.ProcesoRepository;
 import com.example.backend.repository.UsuarioRepository;
 import org.springframework.data.domain.Page;
@@ -23,6 +24,8 @@ public class ProcesoServiceImpl implements ProcesoService {
     private final EmpresaRepository empresaRepository;
     private final UsuarioRepository usuarioRepository;
     private final HistorialProcesoRepository historialProcesoRepository;
+    private final PoolRepository poolRepository;
+    private final PoolService poolService;
     private final LaneService laneService;
     private final ActividadService actividadService;
     private final GatewayService gatewayService;
@@ -35,23 +38,27 @@ public class ProcesoServiceImpl implements ProcesoService {
             EmpresaRepository empresaRepository,
             UsuarioRepository usuarioRepository,
             HistorialProcesoRepository historialProcesoRepository,
+            PoolRepository poolRepository,
+            PoolService poolService,
             LaneService laneService,
             ActividadService actividadService,
             GatewayService gatewayService,
             ArcoService arcoService,
-            EventoMensajeService eventoMensajeService,   
-            FlujoMensajeService flujoMensajeService) {   
+            EventoMensajeService eventoMensajeService,
+            FlujoMensajeService flujoMensajeService) {
 
         this.procesoRepository = procesoRepository;
         this.empresaRepository = empresaRepository;
         this.usuarioRepository = usuarioRepository;
         this.historialProcesoRepository = historialProcesoRepository;
+        this.poolRepository = poolRepository;
+        this.poolService = poolService;
         this.laneService = laneService;
         this.actividadService = actividadService;
         this.gatewayService = gatewayService;
         this.arcoService = arcoService;
-        this.eventoMensajeService = eventoMensajeService;  
-        this.flujoMensajeService = flujoMensajeService;    
+        this.eventoMensajeService = eventoMensajeService;
+        this.flujoMensajeService = flujoMensajeService;
     }
 
     @Override
@@ -59,7 +66,16 @@ public class ProcesoServiceImpl implements ProcesoService {
     public ProcesoResponseDTO crearProceso(
             Long empresaId,
             Long usuarioId,
+            RolUsuario rol,
             ProcesoCrearRequestDTO request) {
+
+        if (rol != RolUsuario.ADMINISTRADOR
+                && rol != RolUsuario.EDITOR) {
+
+            throw new PermisoDenegadoException(
+                    "No tienes permisos para crear procesos"
+            );
+        }
 
         if (request.getNombre() == null
                 || request.getNombre().isBlank()) {
@@ -112,6 +128,13 @@ public class ProcesoServiceImpl implements ProcesoService {
         proceso.setEmpresa(empresa);
 
         proceso = procesoRepository.save(proceso);
+
+        Pool poolPropio = new Pool();
+        poolPropio.setNombre(empresa.getNombre());
+        poolPropio.setTipo(TipoPool.PROPIO);
+        poolPropio.setProceso(proceso);
+        poolPropio.setActivo(true);
+        poolRepository.save(poolPropio);
 
         registrarHistorial(
                 proceso,
@@ -314,12 +337,20 @@ public class ProcesoServiceImpl implements ProcesoService {
 
         List<LaneDTO> lanes =
                 laneService.listarPorProceso(
-                        procesoId
+                        procesoId,
+                        empresaId
+                );
+
+        List<PoolResponseDTO> pools =
+                poolService.listarPorProceso(
+                        procesoId,
+                        empresaId
                 );
 
         List<ActividadDTO> actividades =
                 actividadService.listarPorProceso(
-                        procesoId
+                        procesoId,
+                        empresaId
                 );
 
         List<GatewayResponseDTO> gateways =
@@ -353,12 +384,13 @@ public class ProcesoServiceImpl implements ProcesoService {
                 proceso.getCategoria(),
                 proceso.getEstado(),
                 proceso.getActivo(),
+                pools,
                 lanes,
                 actividades,
                 gateways,
                 arcos,
-                eventosMensaje,  
-                flujosMensaje    
+                eventosMensaje,
+                flujosMensaje
         );
     }
 

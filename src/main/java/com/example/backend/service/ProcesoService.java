@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface ProcesoService {
 
-    ProcesoResponseDTO crearProceso(Long empresaId, Long usuarioId, ProcesoCrearRequestDTO request);
+    ProcesoResponseDTO crearProceso(Long empresaId, Long usuarioId, RolUsuario rol, ProcesoCrearRequestDTO request);
 
     ProcesoResponseDTO editarProceso(Long procesoId, Long empresaId, Long usuarioId,
                                       RolUsuario rol, ProcesoEditarRequestDTO request);

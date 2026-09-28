@@ -7,8 +7,10 @@ import com.example.backend.entity.Actividad;
 import com.example.backend.entity.Arco;
 import com.example.backend.entity.HistorialProceso;
 import com.example.backend.entity.Lane;
+import com.example.backend.entity.Pool;
 import com.example.backend.entity.Proceso;
 import com.example.backend.entity.RolUsuario;
+import com.example.backend.entity.TipoPool;
 import com.example.backend.entity.TipoNodo;
 import com.example.backend.exception.OperacionInvalidaException;
 import com.example.backend.exception.PermisoDenegadoException;
@@ -56,14 +58,13 @@ public class ActividadServiceImpl implements ActividadService {
     @Transactional
     public ActividadDTO crearActividad(
             Long procesoId,
-            ActividadRequestDTO request) {
+            ActividadRequestDTO request,
+            Long empresaId,
+            RolUsuario rol) {
 
-        Proceso proceso = procesoRepository.findById(procesoId)
-                .orElseThrow(() ->
-                        new RecursoNoEncontradoException(
-                                "El proceso no existe"
-                        )
-                );
+        validarPermisoEdicion(rol);
+
+        Proceso proceso = obtenerProceso(procesoId, empresaId);
 
         validarProcesoActivo(proceso);
         validarDatosActividad(request);
@@ -111,7 +112,11 @@ public class ActividadServiceImpl implements ActividadService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ActividadDTO> listarPorProceso(Long procesoId) {
+    public List<ActividadDTO> listarPorProceso(
+            Long procesoId,
+            Long empresaId) {
+
+        obtenerProceso(procesoId, empresaId);
 
         return actividadRepository
                 .findByProcesoIdAndActivoTrue(procesoId)
@@ -455,6 +460,32 @@ public class ActividadServiceImpl implements ActividadService {
             );
         }
 
+        if (!Boolean.TRUE.equals(lane.getActivo())) {
+            throw new OperacionInvalidaException(
+                    "La lane seleccionada está eliminada"
+            );
+        }
+
+        if (lane.getRolProceso() == null) {
+            throw new OperacionInvalidaException(
+                    "La lane seleccionada no tiene rol de proceso asociado"
+            );
+        }
+
+        Pool pool = lane.getPool();
+
+        if (pool == null || !Boolean.TRUE.equals(pool.getActivo())) {
+            throw new OperacionInvalidaException(
+                    "La lane seleccionada no pertenece a un pool activo"
+            );
+        }
+
+        if (pool.getTipo() == TipoPool.EXTERNO) {
+            throw new OperacionInvalidaException(
+                    "No se pueden crear actividades dentro de un pool externo"
+            );
+        }
+
         return lane;
     }
 
@@ -469,6 +500,9 @@ public class ActividadServiceImpl implements ActividadService {
         dto.setProcesoId(actividad.getProceso().getId());
         dto.setLaneId(actividad.getLane().getId());
         dto.setLaneNombre(actividad.getLane().getNombre());
+        if (actividad.getLane().getPool() != null) {
+            dto.setPoolId(actividad.getLane().getPool().getId());
+        }
         dto.setPosicionX(actividad.getPosicionX());
         dto.setPosicionY(actividad.getPosicionY());
 

@@ -12,7 +12,7 @@ import com.example.backend.entity.Lane;
 
 public interface LaneRepository extends JpaRepository<Lane, Long> {
 
-    List<Lane> findByProcesoId(Long procesoId);
+    List<Lane> findByProcesoIdAndActivoTrueOrderByOrdenAsc(Long procesoId);
 
     boolean existsByProcesoIdAndRolProcesoId(Long procesoId, Long rolProcesoId);
 
@@ -23,6 +23,7 @@ public interface LaneRepository extends JpaRepository<Lane, Long> {
             FROM Lane l
             JOIN l.proceso p
             WHERE l.rolProceso.id IN :rolIds
+            AND l.activo = true
             AND p.activo = true
             ORDER BY p.nombre
             """)

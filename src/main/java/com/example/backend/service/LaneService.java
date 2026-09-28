@@ -10,11 +10,8 @@ import java.util.List;
 
 public interface LaneService {
 
-    List<LaneDTO> listarPorProceso(Long procesoId);
+    List<LaneDTO> listarPorProceso(Long procesoId, Long empresaId);
 
-    LaneDTO crearLane(Long procesoId, String nombre);
-
-    // NUEVO (HU-22 a HU-24)
     List<LaneDTO> listarPorPool(Long procesoId, Long poolId, Long empresaId);
 
     LaneDTO crearLaneEnPool(Long procesoId, Long poolId, LaneRequestDTO request, Long empresaId, RolUsuario rol);

@@ -80,14 +80,16 @@ public class ProcesoController {
 
         Long empresaId = obtenerEmpresaId(session);
         Long usuarioId = obtenerUsuarioId(session);
+        RolUsuario rol = obtenerRol(session);
 
-        if (empresaId == null || usuarioId == null) {
+        if (empresaId == null || usuarioId == null || rol == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         ProcesoResponseDTO proceso = procesoService.crearProceso(
                 empresaId,
                 usuarioId,
+                rol,
                 request
         );
 

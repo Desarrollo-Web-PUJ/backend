@@ -295,7 +295,9 @@ public class ArcoServiceImpl implements ArcoService {
         Long poolDestinoId = resolverPoolDeNodo(tipoDestino, destinoId);
 
         if (poolOrigenId == null || poolDestinoId == null) {
-            return;
+            throw new OperacionInvalidaException(
+                    "Todo nodo conectado por un arco debe pertenecer a un pool"
+            );
         }
 
         if (!poolOrigenId.equals(poolDestinoId)) {

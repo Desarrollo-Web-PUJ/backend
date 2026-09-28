@@ -29,4 +29,6 @@ public interface EventoMensajeRepository extends JpaRepository<EventoMensaje, Lo
 
     // HU-27: catch de inicio no puede tener arcos entrantes
     boolean existsByPoolIdAndTipoAndActivoTrue(Long poolId, TipoEventoMensaje tipo);
+
+    boolean existsByPoolIdAndActivoTrue(Long poolId);
 }

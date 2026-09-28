@@ -12,6 +12,7 @@ public class ProcesoDetalleDTO {
     private String categoria;
     private EstadoProceso estado;
     private Boolean activo;
+    private List<PoolResponseDTO> pools;
     private List<LaneDTO> lanes;
     private List<ActividadDTO> actividades;
     private List<GatewayResponseDTO> gateways;
@@ -27,10 +28,11 @@ public class ProcesoDetalleDTO {
             String categoria,
             EstadoProceso estado,
             Boolean activo,
+            List<PoolResponseDTO> pools,
             List<LaneDTO> lanes,
             List<ActividadDTO> actividades,
             List<GatewayResponseDTO> gateways,
-            List<ArcoResponseDTO> arcos, 
+            List<ArcoResponseDTO> arcos,
             List<EventoMensajeResponseDTO> eventosMensaje,
             List<FlujoMensajeResponseDTO> flujosMensaje) {
 
@@ -40,6 +42,7 @@ public class ProcesoDetalleDTO {
         this.categoria = categoria;
         this.estado = estado;
         this.activo = activo;
+        this.pools = pools;
         this.lanes = lanes;
         this.actividades = actividades;
         this.gateways = gateways;
@@ -72,6 +75,10 @@ public class ProcesoDetalleDTO {
         return activo;
     }
 
+    public List<PoolResponseDTO> getPools() {
+        return pools;
+    }
+
     public List<LaneDTO> getLanes() {
         return lanes;
     }
@@ -87,10 +94,10 @@ public class ProcesoDetalleDTO {
     public List<ArcoResponseDTO> getArcos() {
         return arcos;
     }
-    public List<EventoMensajeResponseDTO> getEventosMensaje() { 
-        return eventosMensaje; 
+    public List<EventoMensajeResponseDTO> getEventosMensaje() {
+        return eventosMensaje;
     }
-    public List<FlujoMensajeResponseDTO> getFlujosMensaje() { 
-        return flujosMensaje; 
+    public List<FlujoMensajeResponseDTO> getFlujosMensaje() {
+        return flujosMensaje;
     }
 }

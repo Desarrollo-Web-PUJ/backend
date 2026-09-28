@@ -14,4 +14,6 @@ public interface GatewayRepository extends JpaRepository<Gateway, Long> {
             Long id,
             Long procesoId
     );
+
+    boolean existsByPoolIdAndActivoTrue(Long poolId);
 }

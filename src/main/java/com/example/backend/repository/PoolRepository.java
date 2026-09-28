@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.example.backend.entity.Pool;
+import com.example.backend.entity.TipoPool;
 
 public interface PoolRepository extends JpaRepository<Pool, Long> {
 
@@ -17,4 +18,8 @@ public interface PoolRepository extends JpaRepository<Pool, Long> {
 
     boolean existsByProcesoIdAndNombreIgnoreCaseAndIdNotAndActivoTrue(
             Long procesoId, String nombre, Long idActual);
+
+    boolean existsByProcesoIdAndTipoAndActivoTrue(Long procesoId, TipoPool tipo);
+
+    long countByProcesoIdAndTipoAndActivoTrue(Long procesoId, TipoPool tipo);
 }

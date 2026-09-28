@@ -46,24 +46,15 @@ public class LaneServiceImpl implements LaneService {
         this.actividadRepository = actividadRepository;
     }
 
-    // ---- Métodos originales (HU-08), sin tocar ----
-
     @Override
-    public List<LaneDTO> listarPorProceso(Long procesoId) {
-        return laneRepository.findByProcesoId(procesoId).stream()
-                .map(l -> new LaneDTO(l.getId(), l.getNombre()))
+    @Transactional(readOnly = true)
+    public List<LaneDTO> listarPorProceso(Long procesoId, Long empresaId) {
+        obtenerProceso(procesoId, empresaId);
+
+        return laneRepository.findByProcesoIdAndActivoTrueOrderByOrdenAsc(procesoId).stream()
+                .map(this::toDTO)
                 .collect(Collectors.toList());
     }
-
-    @Override
-    public LaneDTO crearLane(Long procesoId, String nombre) {
-        Proceso proceso = procesoRepository.findById(procesoId)
-                .orElseThrow(() -> new IllegalArgumentException("El proceso no existe"));
-        Lane lane = laneRepository.save(new Lane(nombre, proceso));
-        return new LaneDTO(lane.getId(), lane.getNombre());
-    }
-
-    // ---- Métodos nuevos (HU-22, HU-24) ----
 
     @Override
     @Transactional(readOnly = true)
@@ -72,7 +63,7 @@ public class LaneServiceImpl implements LaneService {
         obtenerPool(poolId, procesoId);
 
         return laneRepository.findByPoolIdAndActivoTrueOrderByOrdenAsc(poolId).stream()
-                .map(l -> new LaneDTO(l.getId(), l.getNombre()))
+                .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -102,7 +93,7 @@ public class LaneServiceImpl implements LaneService {
 
         lane = laneRepository.save(lane);
 
-        return new LaneDTO(lane.getId(), lane.getNombre());
+        return toDTO(lane);
     }
 
     @Override
@@ -119,8 +110,9 @@ public class LaneServiceImpl implements LaneService {
 
         RolProceso rolProceso = obtenerRolProcesoActivo(request.getRolProcesoId(), empresaId);
 
+        Long rolActualId = lane.getRolProceso() != null ? lane.getRolProceso().getId() : null;
         boolean rolUsadoPorOtraLane = laneRepository.existsByPoolIdAndRolProcesoId(poolId, rolProceso.getId())
-                && !lane.getRolProceso().getId().equals(rolProceso.getId());
+                && !rolProceso.getId().equals(rolActualId);
         if (rolUsadoPorOtraLane) {
             throw new OperacionInvalidaException("Ese rol de proceso ya tiene una lane en este pool");
         }
@@ -131,7 +123,7 @@ public class LaneServiceImpl implements LaneService {
         }
 
         lane = laneRepository.save(lane);
-        return new LaneDTO(lane.getId(), lane.getNombre());
+        return toDTO(lane);
     }
 
     @Override
@@ -160,7 +152,7 @@ public class LaneServiceImpl implements LaneService {
         }
 
         return laneRepository.findByPoolIdAndActivoTrueOrderByOrdenAsc(pool.getId()).stream()
-                .map(l -> new LaneDTO(l.getId(), l.getNombre()))
+                .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -186,6 +178,19 @@ public class LaneServiceImpl implements LaneService {
         laneRepository.save(lane);
 
         return new EliminacionLaneResponseDTO("Lane eliminada correctamente", List.of());
+    }
+
+    private LaneDTO toDTO(Lane lane) {
+        LaneDTO dto = new LaneDTO(lane.getId(), lane.getNombre());
+        dto.setProcesoId(lane.getProceso().getId());
+        if (lane.getPool() != null) {
+            dto.setPoolId(lane.getPool().getId());
+        }
+        if (lane.getRolProceso() != null) {
+            dto.setRolProcesoId(lane.getRolProceso().getId());
+        }
+        dto.setOrden(lane.getOrden());
+        return dto;
     }
 
     private RolProceso obtenerRolProcesoActivo(Long rolProcesoId, Long empresaId) {

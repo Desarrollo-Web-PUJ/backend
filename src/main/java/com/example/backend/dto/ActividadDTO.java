@@ -9,6 +9,7 @@ public class ActividadDTO {
     private Long procesoId;
     private Long laneId;
     private String laneNombre;
+    private Long poolId;
     private Double posicionX;
     private Double posicionY;
 
@@ -27,6 +28,8 @@ public class ActividadDTO {
     public void setLaneId(Long laneId) { this.laneId = laneId; }
     public String getLaneNombre() { return laneNombre; }
     public void setLaneNombre(String laneNombre) { this.laneNombre = laneNombre; }
+    public Long getPoolId() { return poolId; }
+    public void setPoolId(Long poolId) { this.poolId = poolId; }
     public Double getPosicionX() { return posicionX; }
     public void setPosicionX(Double posicionX) { this.posicionX = posicionX; }
     public Double getPosicionY() { return posicionY; }

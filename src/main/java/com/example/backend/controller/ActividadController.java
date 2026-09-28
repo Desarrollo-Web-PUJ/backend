@@ -3,12 +3,10 @@ package com.example.backend.controller;
 import com.example.backend.dto.ActividadDTO;
 import com.example.backend.dto.ActividadRequestDTO;
 import com.example.backend.dto.EliminacionActividadResponseDTO;
-import com.example.backend.dto.LaneDTO;
 import com.example.backend.entity.RolUsuario;
 import com.example.backend.exception.OperacionInvalidaException;
 import com.example.backend.exception.SesionNoAutenticadaException;
 import com.example.backend.service.ActividadService;
-import com.example.backend.service.LaneService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -22,21 +20,20 @@ import java.util.List;
 public class ActividadController {
 
     private final ActividadService actividadService;
-    private final LaneService laneService;
 
-    public ActividadController(
-            ActividadService actividadService,
-            LaneService laneService) {
+    public ActividadController(ActividadService actividadService) {
         this.actividadService = actividadService;
-        this.laneService = laneService;
     }
 
     @GetMapping
     public ResponseEntity<List<ActividadDTO>> listar(
-            @PathVariable Long procesoId) {
+            @PathVariable Long procesoId,
+            HttpSession session) {
+
+        Long empresaId = obtenerEmpresaId(session);
 
         List<ActividadDTO> actividades =
-                actividadService.listarPorProceso(procesoId);
+                actividadService.listarPorProceso(procesoId, empresaId);
 
         return ResponseEntity.ok(actividades);
     }
@@ -44,10 +41,14 @@ public class ActividadController {
     @PostMapping
     public ResponseEntity<ActividadDTO> crear(
             @PathVariable Long procesoId,
-            @Valid @RequestBody ActividadRequestDTO request) {
+            @Valid @RequestBody ActividadRequestDTO request,
+            HttpSession session) {
+
+        Long empresaId = obtenerEmpresaId(session);
+        RolUsuario rol = obtenerRol(session);
 
         ActividadDTO actividad =
-                actividadService.crearActividad(procesoId, request);
+                actividadService.crearActividad(procesoId, request, empresaId, rol);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -101,29 +102,6 @@ public class ActividadController {
                 );
 
         return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/lanes")
-    public ResponseEntity<List<LaneDTO>> listarLanes(
-            @PathVariable Long procesoId) {
-
-        List<LaneDTO> lanes =
-                laneService.listarPorProceso(procesoId);
-
-        return ResponseEntity.ok(lanes);
-    }
-
-    @PostMapping("/lanes")
-    public ResponseEntity<LaneDTO> crearLane(
-            @PathVariable Long procesoId,
-            @RequestParam String nombreLane) {
-
-        LaneDTO lane =
-                laneService.crearLane(procesoId, nombreLane);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(lane);
     }
 
     private Long obtenerEmpresaId(HttpSession session) {
