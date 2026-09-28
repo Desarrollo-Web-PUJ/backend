@@ -1,9 +1,9 @@
 package com.example.backend.entity;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -11,38 +11,35 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "gateways")
+@Table(
+    name = "procesos_compartidos",
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"proceso_id", "empresa_destino_id"})
+    }
+)
 @Getter
 @Setter
-public class Gateway {
+public class ProcesoCompartido {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TipoGateway tipo;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "proceso_id", nullable = false)
     private Proceso proceso;
 
-    // NUEVO:el gateway vive directamente en un pool (no en una lane).
-    // Nullable para no romper los gateways que ya existan (HU-14 a HU-16).
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "pool_id")
-    private Pool pool;
+    @JoinColumn(name = "empresa_destino_id", nullable = false)
+    private Empresa empresaDestino;
 
-    @Column(name = "posicion_x")
-    private Double posicionX;
-
-    @Column(name = "posicion_y")
-    private Double posicionY;
+    @Column(nullable = false)
+    private LocalDateTime fechaCompartido;
 
     @Column(nullable = false)
     private Boolean activo = true;

@@ -11,38 +11,35 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "gateways")
+@Table(
+    name = "pools",
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"proceso_id", "nombre"})
+    }
+)
 @Getter
 @Setter
-public class Gateway {
+public class Pool {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private TipoGateway tipo;
+    private String nombre;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "proceso_id", nullable = false)
     private Proceso proceso;
 
-    // NUEVO:el gateway vive directamente en un pool (no en una lane).
-    // Nullable para no romper los gateways que ya existan (HU-14 a HU-16).
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "pool_id")
-    private Pool pool;
-
-    @Column(name = "posicion_x")
-    private Double posicionX;
-
-    @Column(name = "posicion_y")
-    private Double posicionY;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TipoPool tipo = TipoPool.PROPIO;
 
     @Column(nullable = false)
     private Boolean activo = true;

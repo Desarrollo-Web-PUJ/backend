@@ -13,94 +13,75 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.backend.dto.EliminacionLaneResponseDTO;
-import com.example.backend.dto.LaneDTO;
-import com.example.backend.dto.LaneRequestDTO;
-import com.example.backend.dto.ReordenarLanesRequestDTO;
+import com.example.backend.dto.EliminacionPoolResponseDTO;
+import com.example.backend.dto.PoolRequestDTO;
+import com.example.backend.dto.PoolResponseDTO;
 import com.example.backend.entity.RolUsuario;
 import com.example.backend.exception.SesionNoAutenticadaException;
-import com.example.backend.service.LaneService;
+import com.example.backend.service.PoolService;
 
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/procesos/{procesoId}/pools/{poolId}/lanes")
-public class LaneController {
+@RequestMapping("/api/procesos/{procesoId}/pools")
+public class PoolController {
 
-    private final LaneService laneService;
+    private final PoolService poolService;
 
-    public LaneController(LaneService laneService) {
-        this.laneService = laneService;
+    public PoolController(PoolService poolService) {
+        this.poolService = poolService;
     }
 
-    // HU-22: Listar lanes del pool
+    // HU-21: Listar pools del proceso
     @GetMapping
-    public ResponseEntity<List<LaneDTO>> listar(
+    public ResponseEntity<List<PoolResponseDTO>> listar(
             @PathVariable Long procesoId,
-            @PathVariable Long poolId,
             HttpSession session) {
 
         Long empresaId = obtenerEmpresaId(session);
-        return ResponseEntity.ok(laneService.listarPorPool(procesoId, poolId, empresaId));
+        return ResponseEntity.ok(poolService.listarPorProceso(procesoId, empresaId));
     }
 
-    // HU-22: Crear lane
+    // HU-21: Crear pool
     @PostMapping
-    public ResponseEntity<LaneDTO> crear(
+    public ResponseEntity<PoolResponseDTO> crear(
             @PathVariable Long procesoId,
-            @PathVariable Long poolId,
-            @Valid @RequestBody LaneRequestDTO request,
+            @Valid @RequestBody PoolRequestDTO request,
             HttpSession session) {
 
         Long empresaId = obtenerEmpresaId(session);
         RolUsuario rol = obtenerRol(session);
 
-        LaneDTO response = laneService.crearLaneEnPool(procesoId, poolId, request, empresaId, rol);
+        PoolResponseDTO response = poolService.crearPool(procesoId, request, empresaId, rol);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // HU-22: Editar lane (reasignar rol / cambiar orden puntual)
-    @PutMapping("/{laneId}")
-    public ResponseEntity<LaneDTO> editar(
+    // HU-21: Editar pool
+    @PutMapping("/{poolId}")
+    public ResponseEntity<PoolResponseDTO> editar(
             @PathVariable Long procesoId,
             @PathVariable Long poolId,
-            @PathVariable Long laneId,
-            @Valid @RequestBody LaneRequestDTO request,
+            @Valid @RequestBody PoolRequestDTO request,
             HttpSession session) {
 
         Long empresaId = obtenerEmpresaId(session);
         RolUsuario rol = obtenerRol(session);
 
-        return ResponseEntity.ok(laneService.editarLane(procesoId, poolId, laneId, request, empresaId, rol));
+        return ResponseEntity.ok(poolService.editarPool(procesoId, poolId, request, empresaId, rol));
     }
 
-    // HU-22: Reordenar todas las lanes del pool (drag & drop)
-    @PutMapping("/orden")
-    public ResponseEntity<List<LaneDTO>> reordenar(
+    // HU-21: Eliminar pool
+    @DeleteMapping("/{poolId}")
+    public ResponseEntity<EliminacionPoolResponseDTO> eliminar(
             @PathVariable Long procesoId,
             @PathVariable Long poolId,
-            @Valid @RequestBody ReordenarLanesRequestDTO request,
             HttpSession session) {
 
         Long empresaId = obtenerEmpresaId(session);
         RolUsuario rol = obtenerRol(session);
 
-        return ResponseEntity.ok(laneService.reordenarLanes(procesoId, poolId, request, empresaId, rol));
-    }
-
-    // HU-22: Eliminar lane
-    @DeleteMapping("/{laneId}")
-    public ResponseEntity<EliminacionLaneResponseDTO> eliminar(
-            @PathVariable Long procesoId,
-            @PathVariable Long poolId,
-            @PathVariable Long laneId,
-            HttpSession session) {
-
-        Long empresaId = obtenerEmpresaId(session);
-        RolUsuario rol = obtenerRol(session);
-
-        return ResponseEntity.ok(laneService.eliminarLane(procesoId, poolId, laneId, empresaId, rol));
+        return ResponseEntity.ok(poolService.eliminarPool(procesoId, poolId, empresaId, rol));
     }
 
     private Long obtenerEmpresaId(HttpSession session) {

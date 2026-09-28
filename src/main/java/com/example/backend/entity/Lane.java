@@ -1,6 +1,14 @@
 package com.example.backend.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "lanes")
@@ -24,6 +32,20 @@ public class Lane {
     @JoinColumn(name = "rol_proceso_id")
     private RolProceso rolProceso;
 
+    // NUEVO (HU-22): la lane vive dentro de un pool. Nullable para no romper
+    // filas ya existentes creadas antes de este cambio.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pool_id")
+    private Pool pool;
+
+    // NUEVO (HU-22): posición de la lane dentro del pool, para reordenar.
+    @Column(nullable = false)
+    private Integer orden = 0;
+
+    // NUEVO (HU-22): borrado lógico, igual patrón que RolProceso/Actividad.
+    @Column(nullable = false)
+    private Boolean activo = true;
+
     public Lane() {}
 
     public Lane(String nombre, Proceso proceso) {
@@ -45,4 +67,10 @@ public class Lane {
     public void setProceso(Proceso proceso) { this.proceso = proceso; }
     public RolProceso getRolProceso() { return rolProceso; }
     public void setRolProceso(RolProceso rolProceso) { this.rolProceso = rolProceso; }
+    public Pool getPool() { return pool; }
+    public void setPool(Pool pool) { this.pool = pool; }
+    public Integer getOrden() { return orden; }
+    public void setOrden(Integer orden) { this.orden = orden; }
+    public Boolean getActivo() { return activo; }
+    public void setActivo(Boolean activo) { this.activo = activo; }
 }
