@@ -6,10 +6,10 @@ import com.example.backend.exception.OperacionInvalidaException;
 import com.example.backend.exception.PermisoDenegadoException;
 import com.example.backend.exception.RecursoNoEncontradoException;
 import com.example.backend.repository.*;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -25,7 +25,7 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
     private final PoolRepository poolRepository;
     private final LaneRepository laneRepository;
     private final HistorialProcesoRepository historialRepository;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper objectMapper;
 
     public EventoMensajeServiceImpl(
             EventoMensajeRepository eventoRepository,
@@ -34,7 +34,7 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
             PoolRepository poolRepository,
             LaneRepository laneRepository,
             HistorialProcesoRepository historialRepository,
-            ObjectMapper objectMapper) {
+            JsonMapper objectMapper) {
         this.eventoRepository = eventoRepository;
         this.flujoRepository = flujoRepository;
         this.procesoRepository = procesoRepository;
