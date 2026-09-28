@@ -46,6 +46,17 @@ public class FlujoMensajeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
+    @PutMapping("/{flujoId}")
+    public ResponseEntity<FlujoMensajeResponseDTO> editar(
+            @PathVariable Long procesoId,
+            @PathVariable Long flujoId,
+            @Valid @RequestBody FlujoMensajeRequestDTO request,
+            HttpSession session) {
+        Long empresaId = obtenerEmpresaId(session);
+        RolUsuario rol = obtenerRol(session);
+        return ResponseEntity.ok(flujoService.editarFlujo(procesoId, flujoId, request, empresaId, rol));
+    }
+
     @DeleteMapping("/{flujoId}")
     public ResponseEntity<EliminacionFlujoMensajeResponseDTO> eliminar(
             @PathVariable Long procesoId,

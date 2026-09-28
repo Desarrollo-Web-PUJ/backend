@@ -14,6 +14,8 @@ public interface PoolRepository extends JpaRepository<Pool, Long> {
 
     Optional<Pool> findByIdAndProcesoId(Long id, Long procesoId);
 
+    Optional<Pool> findByIdAndProcesoIdAndActivoTrue(Long id, Long procesoId);
+
     boolean existsByProcesoIdAndNombreIgnoreCaseAndActivoTrue(Long procesoId, String nombre);
 
     boolean existsByProcesoIdAndNombreIgnoreCaseAndIdNotAndActivoTrue(

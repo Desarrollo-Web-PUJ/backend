@@ -24,6 +24,8 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
     private final ProcesoRepository procesoRepository;
     private final PoolRepository poolRepository;
     private final LaneRepository laneRepository;
+    private final ActividadRepository actividadRepository;
+    private final ArcoRepository arcoRepository;
     private final HistorialProcesoRepository historialRepository;
     private final JsonMapper objectMapper;
 
@@ -33,6 +35,8 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
             ProcesoRepository procesoRepository,
             PoolRepository poolRepository,
             LaneRepository laneRepository,
+            ActividadRepository actividadRepository,
+            ArcoRepository arcoRepository,
             HistorialProcesoRepository historialRepository,
             JsonMapper objectMapper) {
         this.eventoRepository = eventoRepository;
@@ -40,6 +44,8 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
         this.procesoRepository = procesoRepository;
         this.poolRepository = poolRepository;
         this.laneRepository = laneRepository;
+        this.actividadRepository = actividadRepository;
+        this.arcoRepository = arcoRepository;
         this.historialRepository = historialRepository;
         this.objectMapper = objectMapper;
     }
@@ -58,6 +64,7 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
                                                  Long empresaId, RolUsuario rol) {
         verificarPermiso(rol);
         Proceso proceso = verificarProceso(procesoId, empresaId);
+        validarProcesoActivo(proceso);
         Pool pool = verificarPool(procesoId, request.getPoolId());
         Lane lane = request.getLaneId() != null
                 ? verificarLane(pool.getId(), request.getLaneId()) : null;
@@ -66,7 +73,7 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
         evento.setProceso(proceso);
         evento.setPool(pool);
         evento.setLane(lane);
-        aplicarDatos(evento, request, procesoId);
+        aplicarDatos(evento, request, procesoId, null);
 
         evento = eventoRepository.save(evento);
 
@@ -88,6 +95,7 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
                                                   Long empresaId, RolUsuario rol) {
         verificarPermiso(rol);
         Proceso proceso = verificarProceso(procesoId, empresaId);
+        validarProcesoActivo(proceso);
         EventoMensaje evento = eventoRepository.findByIdAndProcesoIdAndActivoTrue(eventoId, procesoId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Evento de mensaje no encontrado"));
 
@@ -95,9 +103,11 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
         Lane lane = request.getLaneId() != null
                 ? verificarLane(pool.getId(), request.getLaneId()) : null;
 
+        validarEdicionConConexionesActivas(evento, request, pool, procesoId);
+
         evento.setPool(pool);
         evento.setLane(lane);
-        aplicarDatos(evento, request, procesoId);
+        aplicarDatos(evento, request, procesoId, eventoId);
 
         evento = eventoRepository.save(evento);
         List<String> advertencias = validarReglas(evento, procesoId);
@@ -116,6 +126,7 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
                                                                Long empresaId, RolUsuario rol) {
         verificarPermiso(rol);
         Proceso proceso = verificarProceso(procesoId, empresaId);
+        validarProcesoActivo(proceso);
         EventoMensaje evento = eventoRepository.findByIdAndProcesoIdAndActivoTrue(eventoId, procesoId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Evento de mensaje no encontrado"));
 
@@ -131,6 +142,20 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
                     .forEach(f -> { f.setActivo(false); flujoRepository.save(f); });
         }
 
+        List<Arco> arcosConectados = new ArrayList<>();
+        arcosConectados.addAll(arcoRepository.findByProcesoIdAndTipoOrigenAndOrigenIdAndActivoTrue(
+                procesoId, TipoNodo.EVENTO, eventoId));
+        arcosConectados.addAll(arcoRepository.findByProcesoIdAndTipoDestinoAndDestinoIdAndActivoTrue(
+                procesoId, TipoNodo.EVENTO, eventoId));
+        if (!arcosConectados.isEmpty()) {
+            advertencias.add("Se eliminarán también los arcos de secuencia asociados ("
+                    + arcosConectados.size() + ")");
+            arcosConectados.forEach(arco -> {
+                arco.setActivo(false);
+                arcoRepository.save(arco);
+            });
+        }
+
         evento.setActivo(false);
         eventoRepository.save(evento);
 
@@ -143,20 +168,36 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
 
     // ---------- Helpers ----------
 
-    private void aplicarDatos(EventoMensaje e, EventoMensajeRequestDTO r, Long procesoId) {
+    private void aplicarDatos(EventoMensaje e, EventoMensajeRequestDTO r, Long procesoId, Long eventoIdActual) {
+        validarRequest(r);
+        validarActividadesConsumidoras(r, procesoId);
+
         e.setTipo(r.getTipo());
-        e.setNombreMensaje(r.getNombreMensaje());
-        e.setClaveCorrelacion(r.getClaveCorrelacion());
-        e.setCorrelacionDefinida(r.getClaveCorrelacion() != null && !r.getClaveCorrelacion().isBlank());
-        e.setComportamientoSinCorrelacion(r.getComportamientoSinCorrelacion());
-        e.setOrigenExterno(Boolean.TRUE.equals(r.getOrigenExterno()));
-        e.setTipoDestinoExterno(r.getTipoDestinoExterno());
-        e.setComportamientoFallo(r.getComportamientoFallo());
+        e.setNombreMensaje(r.getNombreMensaje().trim());
+        e.setClaveCorrelacion(normalizarTexto(r.getClaveCorrelacion()));
+        e.setCorrelacionDefinida(e.getClaveCorrelacion() != null);
+        e.setOrigenExterno(Boolean.TRUE.equals(r.getOrigenExterno()) && r.getTipo() != TipoEventoMensaje.THROW);
+
+        if (r.getTipo() == TipoEventoMensaje.THROW) {
+            e.setTipoDestinoExterno(r.getTipoDestinoExterno());
+            e.setComportamientoFallo(r.getComportamientoFallo());
+            e.setComportamientoSinCorrelacion(null);
+        } else {
+            e.setTipoDestinoExterno(null);
+            e.setComportamientoFallo(null);
+            e.setComportamientoSinCorrelacion(r.getComportamientoSinCorrelacion());
+        }
+
         e.setPosicionX(r.getPosicionX());
         e.setPosicionY(r.getPosicionY());
+
+        validarDuplicado(e, procesoId, eventoIdActual);
+
         try {
-            e.setCamposMensaje(objectMapper.writeValueAsString(r.getCampos()));
-            e.setActividadesConsumidoras(objectMapper.writeValueAsString(r.getActividadesConsumidoras()));
+            e.setCamposMensaje(objectMapper.writeValueAsString(
+                    r.getCampos() == null ? List.of() : r.getCampos()));
+            e.setActividadesConsumidoras(objectMapper.writeValueAsString(
+                    r.getActividadesConsumidoras() == null ? List.of() : r.getActividadesConsumidoras()));
         } catch (Exception ex) {
             throw new OperacionInvalidaException("Error al serializar campos del mensaje");
         }
@@ -216,19 +257,6 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
             }
         }
 
-        // HU-26: THROW a pool externo debe tener tipoDestinoExterno y comportamientoFallo
-        if (e.getTipo() == TipoEventoMensaje.THROW
-                && e.getPool().getTipo() == TipoPool.EXTERNO) {
-            if (e.getTipoDestinoExterno() == null) {
-                throw new OperacionInvalidaException(
-                        "Debe indicar el tipo de destino (correo, servicio web o cola)");
-            }
-            if (e.getComportamientoFallo() == null) {
-                throw new OperacionInvalidaException(
-                        "Debe indicar el comportamiento ante fallo de la notificación");
-            }
-        }
-
         return advertencias;
     }
 
@@ -244,8 +272,13 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
     }
 
     private Pool verificarPool(Long procesoId, Long poolId) {
-        return poolRepository.findByIdAndProcesoId(poolId, procesoId)
+        Pool pool = poolRepository.findByIdAndProcesoIdAndActivoTrue(poolId, procesoId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Pool no encontrado"));
+        if (pool.getTipo() == TipoPool.EXTERNO) {
+            throw new OperacionInvalidaException(
+                    "Un pool externo es caja negra: no puede contener eventos de mensaje internos");
+        }
+        return pool;
     }
 
     private Lane verificarLane(Long poolId, Long laneId) {
@@ -256,6 +289,111 @@ public class EventoMensajeServiceImpl implements EventoMensajeService {
     private void registrarHistorial(Proceso proceso, String descripcion) {
         historialRepository.save(new HistorialProceso(
                 proceso, descripcion, LocalDateTime.now()));
+    }
+
+    private void validarProcesoActivo(Proceso proceso) {
+        if (!Boolean.TRUE.equals(proceso.getActivo())) {
+            throw new OperacionInvalidaException(
+                    "No se pueden modificar eventos de mensaje de un proceso eliminado");
+        }
+    }
+
+    private void validarRequest(EventoMensajeRequestDTO request) {
+        if (request.getTipo() == null) {
+            throw new OperacionInvalidaException("El tipo de evento es obligatorio");
+        }
+        if (request.getNombreMensaje() == null || request.getNombreMensaje().isBlank()) {
+            throw new OperacionInvalidaException("El nombre del mensaje es obligatorio");
+        }
+        if (request.getTipo() == TipoEventoMensaje.CATCH_INTERMEDIO
+                && Boolean.TRUE.equals(request.getOrigenExterno())) {
+            throw new OperacionInvalidaException(
+                    "Solo un Message Catch de inicio puede marcarse como origen externo");
+        }
+        if (request.getTipo() != TipoEventoMensaje.THROW
+                && request.getComportamientoFallo() != null) {
+            throw new OperacionInvalidaException(
+                    "El comportamiento ante fallo solo aplica a Message Throw");
+        }
+        if (request.getTipo() != TipoEventoMensaje.THROW
+                && request.getTipoDestinoExterno() != null) {
+            throw new OperacionInvalidaException(
+                    "El tipo de destino externo solo aplica a Message Throw");
+        }
+        if (request.getTipo() == TipoEventoMensaje.THROW
+                && request.getComportamientoSinCorrelacion() != null) {
+            throw new OperacionInvalidaException(
+                    "El comportamiento sin correlación solo aplica a Message Catch");
+        }
+        if (Boolean.TRUE.equals(request.getOrigenExterno())
+                && request.getComportamientoSinCorrelacion() == null) {
+            throw new OperacionInvalidaException(
+                    "Debe indicar el comportamiento para mensajes externos sin correlación");
+        }
+    }
+
+    private void validarActividadesConsumidoras(EventoMensajeRequestDTO request, Long procesoId) {
+        if (request.getActividadesConsumidoras() == null) {
+            return;
+        }
+        for (Long actividadId : request.getActividadesConsumidoras()) {
+            if (actividadId == null) {
+                throw new OperacionInvalidaException("Las actividades consumidoras no pueden contener valores nulos");
+            }
+            actividadRepository.findByIdAndProcesoIdAndActivoTrue(actividadId, procesoId)
+                    .orElseThrow(() -> new RecursoNoEncontradoException(
+                            "La actividad consumidora " + actividadId
+                                    + " no existe, está eliminada o no pertenece al proceso"));
+        }
+    }
+
+    private void validarEdicionConConexionesActivas(EventoMensaje evento, EventoMensajeRequestDTO request,
+                                                    Pool nuevoPool, Long procesoId) {
+        long flujosOrigen = flujoRepository.countByOrigenIdAndActivoTrue(evento.getId());
+        long flujosDestino = flujoRepository.countByDestinoIdAndActivoTrue(evento.getId());
+
+        if (flujosOrigen > 0 && request.getTipo() != TipoEventoMensaje.THROW) {
+            throw new OperacionInvalidaException(
+                    "No se puede cambiar el tipo: el evento tiene flujos de mensaje salientes activos");
+        }
+        if (flujosDestino > 0 && request.getTipo() == TipoEventoMensaje.THROW) {
+            throw new OperacionInvalidaException(
+                    "No se puede cambiar el tipo: el evento tiene flujos de mensaje entrantes activos");
+        }
+        if ((flujosOrigen > 0 || flujosDestino > 0)
+                && !evento.getPool().getId().equals(nuevoPool.getId())) {
+            throw new OperacionInvalidaException(
+                    "No se puede cambiar el pool de un evento con flujos de mensaje activos");
+        }
+
+        boolean tieneArcos = !arcoRepository.findByProcesoIdAndTipoOrigenAndOrigenIdAndActivoTrue(
+                procesoId, TipoNodo.EVENTO, evento.getId()).isEmpty()
+                || !arcoRepository.findByProcesoIdAndTipoDestinoAndDestinoIdAndActivoTrue(
+                procesoId, TipoNodo.EVENTO, evento.getId()).isEmpty();
+        if (tieneArcos && !evento.getPool().getId().equals(nuevoPool.getId())) {
+            throw new OperacionInvalidaException(
+                    "No se puede cambiar el pool de un evento conectado por arcos de secuencia activos");
+        }
+    }
+
+    private void validarDuplicado(EventoMensaje evento, Long procesoId, Long eventoIdActual) {
+        if (eventoRepository.existsDuplicadoActivo(
+                procesoId,
+                evento.getPool().getId(),
+                evento.getTipo(),
+                evento.getNombreMensaje(),
+                evento.getClaveCorrelacion(),
+                eventoIdActual)) {
+            throw new OperacionInvalidaException(
+                    "Ya existe un evento de mensaje activo con el mismo tipo, nombre, pool y correlación");
+        }
+    }
+
+    private String normalizarTexto(String texto) {
+        if (texto == null || texto.isBlank()) {
+            return null;
+        }
+        return texto.trim();
     }
 
     private EventoMensajeResponseDTO toDTO(EventoMensaje e) {

@@ -14,6 +14,9 @@ public interface FlujoMensajeService {
     FlujoMensajeResponseDTO crearFlujo(Long procesoId, FlujoMensajeRequestDTO request,
                                         Long empresaId, RolUsuario rol);
 
+    FlujoMensajeResponseDTO editarFlujo(Long procesoId, Long flujoId, FlujoMensajeRequestDTO request,
+                                         Long empresaId, RolUsuario rol);
+
     EliminacionFlujoMensajeResponseDTO eliminarFlujo(Long procesoId, Long flujoId,
                                                       Long empresaId, RolUsuario rol);
 }

@@ -15,4 +15,30 @@ public interface FlujoMensajeRepository extends JpaRepository<FlujoMensaje, Long
     long countByOrigenIdAndActivoTrue(Long origenId);
 
     long countByDestinoIdAndActivoTrue(Long destinoId);
+
+    boolean existsByProcesoIdAndOrigenIdAndDestinoIdAndActivoTrue(
+            Long procesoId,
+            Long origenId,
+            Long destinoId
+    );
+
+    boolean existsByProcesoIdAndOrigenIdAndDestinoIdAndActivoTrueAndIdNot(
+            Long procesoId,
+            Long origenId,
+            Long destinoId,
+            Long id
+    );
+
+    boolean existsByProcesoIdAndOrigenIdAndPoolDestinoIdAndActivoTrue(
+            Long procesoId,
+            Long origenId,
+            Long poolDestinoId
+    );
+
+    boolean existsByProcesoIdAndOrigenIdAndPoolDestinoIdAndActivoTrueAndIdNot(
+            Long procesoId,
+            Long origenId,
+            Long poolDestinoId,
+            Long id
+    );
 }

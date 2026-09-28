@@ -52,4 +52,16 @@ public interface ArcoRepository extends JpaRepository<Arco, Long> {
             TipoNodo tipoDestino,
             Long destinoId
     );
+
+    List<Arco> findByProcesoIdAndTipoOrigenAndOrigenIdAndActivoTrue(
+            Long procesoId,
+            TipoNodo tipoOrigen,
+            Long origenId
+    );
+
+    List<Arco> findByProcesoIdAndTipoDestinoAndDestinoIdAndActivoTrue(
+            Long procesoId,
+            TipoNodo tipoDestino,
+            Long destinoId
+    );
 }
