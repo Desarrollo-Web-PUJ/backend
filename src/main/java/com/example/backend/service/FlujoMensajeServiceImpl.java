@@ -1,0 +1,165 @@
+package com.example.backend.service;
+
+import com.example.backend.dto.*;
+import com.example.backend.entity.*;
+import com.example.backend.exception.OperacionInvalidaException;
+import com.example.backend.exception.PermisoDenegadoException;
+import com.example.backend.exception.RecursoNoEncontradoException;
+import com.example.backend.repository.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class FlujoMensajeServiceImpl implements FlujoMensajeService {
+
+    private final FlujoMensajeRepository flujoRepository;
+    private final EventoMensajeRepository eventoRepository;
+    private final PoolRepository poolRepository;
+    private final ProcesoRepository procesoRepository;
+    private final HistorialProcesoRepository historialRepository;
+
+    public FlujoMensajeServiceImpl(FlujoMensajeRepository flujoRepository,
+                                    EventoMensajeRepository eventoRepository,
+                                    PoolRepository poolRepository,
+                                    ProcesoRepository procesoRepository,
+                                    HistorialProcesoRepository historialRepository) {
+        this.flujoRepository = flujoRepository;
+        this.eventoRepository = eventoRepository;
+        this.poolRepository = poolRepository;
+        this.procesoRepository = procesoRepository;
+        this.historialRepository = historialRepository;
+    }
+
+    @Override
+    public List<FlujoMensajeResponseDTO> listarPorProceso(Long procesoId, Long empresaId) {
+        verificarProceso(procesoId, empresaId);
+        return flujoRepository.findByProcesoIdAndActivoTrue(procesoId)
+                .stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public FlujoMensajeResponseDTO crearFlujo(Long procesoId,
+                                               FlujoMensajeRequestDTO request,
+                                               Long empresaId, RolUsuario rol) {
+        verificarPermiso(rol);
+        Proceso proceso = verificarProceso(procesoId, empresaId);
+
+        EventoMensaje origen = eventoRepository
+                .findByIdAndProcesoIdAndActivoTrue(request.getOrigenId(), procesoId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Evento origen no encontrado"));
+
+        if (origen.getTipo() != TipoEventoMensaje.THROW) {
+            throw new OperacionInvalidaException(
+                    "El flujo de mensaje debe partir de un Message Throw");
+        }
+
+        EventoMensaje destino = null;
+        Pool poolDestino = null;
+
+        if (request.getDestinoId() != null) {
+            destino = eventoRepository
+                    .findByIdAndProcesoIdAndActivoTrue(request.getDestinoId(), procesoId)
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Evento destino no encontrado"));
+            if (destino.getTipo() == TipoEventoMensaje.THROW) {
+                throw new OperacionInvalidaException(
+                        "El destino de un flujo de mensaje debe ser un Message Catch");
+            }
+            // HU-25: validar cruce de pools
+            if (destino.getPool().getId().equals(origen.getPool().getId())) {
+                throw new OperacionInvalidaException(
+                        "Un flujo de mensaje solo es válido si cruza de un pool a otro");
+            }
+        } else if (request.getPoolDestinoId() != null) {
+            poolDestino = poolRepository.findByIdAndProcesoId(request.getPoolDestinoId(), procesoId)
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Pool destino no encontrado"));
+            if (poolDestino.getTipo() != TipoPool.EXTERNO) {
+                throw new OperacionInvalidaException(
+                        "El pool destino externo debe tener tipo EXTERNO");
+            }
+            if (poolDestino.getId().equals(origen.getPool().getId())) {
+                throw new OperacionInvalidaException(
+                        "El pool destino del mensaje debe ser distinto al pool origen");
+            }
+        } else {
+            throw new OperacionInvalidaException(
+                    "Debe indicar un Message Catch destino o un pool externo destino");
+        }
+
+        FlujoMensaje flujo = new FlujoMensaje();
+        flujo.setProceso(proceso);
+        flujo.setOrigen(origen);
+        flujo.setDestino(destino);
+        flujo.setPoolDestino(poolDestino);
+        flujo.setEtiqueta(request.getEtiqueta());
+
+        flujo = flujoRepository.save(flujo);
+
+        List<String> advertencias = new ArrayList<>();
+        // HU-25: advertencia si el catch destino no tiene el mismo nombre
+        if (destino != null && !origen.getNombreMensaje().equals(destino.getNombreMensaje())) {
+            advertencias.add("El nombre del mensaje del origen ('"
+                    + origen.getNombreMensaje()
+                    + "') no coincide con el del destino ('"
+                    + destino.getNombreMensaje() + "')");
+        }
+
+        registrarHistorial(proceso,
+                "Se creó un flujo de mensaje desde '" + origen.getNombreMensaje() + "'");
+
+        FlujoMensajeResponseDTO dto = toDTO(flujo);
+        dto.setAdvertencias(advertencias);
+        return dto;
+    }
+
+    @Override
+    @Transactional
+    public EliminacionFlujoMensajeResponseDTO eliminarFlujo(Long procesoId, Long flujoId,
+                                                             Long empresaId, RolUsuario rol) {
+        verificarPermiso(rol);
+        Proceso proceso = verificarProceso(procesoId, empresaId);
+        FlujoMensaje flujo = flujoRepository.findByIdAndProcesoIdAndActivoTrue(flujoId, procesoId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Flujo de mensaje no encontrado"));
+
+        flujo.setActivo(false);
+        flujoRepository.save(flujo);
+
+        registrarHistorial(proceso,
+                "Se eliminó un flujo de mensaje desde '" + flujo.getOrigen().getNombreMensaje() + "'");
+
+        return new EliminacionFlujoMensajeResponseDTO(
+                "Flujo de mensaje eliminado correctamente", new ArrayList<>());
+    }
+
+    private void verificarPermiso(RolUsuario rol) {
+        if (rol == RolUsuario.LECTURA) {
+            throw new PermisoDenegadoException("No tiene permiso para modificar el modelo");
+        }
+    }
+
+    private Proceso verificarProceso(Long procesoId, Long empresaId) {
+        return procesoRepository.findByIdAndEmpresaId(procesoId, empresaId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Proceso no encontrado"));
+    }
+
+    private void registrarHistorial(Proceso proceso, String descripcion) {
+        historialRepository.save(new HistorialProceso(
+                proceso, descripcion, LocalDateTime.now()));
+    }
+
+    private FlujoMensajeResponseDTO toDTO(FlujoMensaje f) {
+        FlujoMensajeResponseDTO dto = new FlujoMensajeResponseDTO();
+        dto.setId(f.getId());
+        dto.setProcesoId(f.getProceso().getId());
+        dto.setOrigenId(f.getOrigen().getId());
+        if (f.getDestino() != null) dto.setDestinoId(f.getDestino().getId());
+        if (f.getPoolDestino() != null) dto.setPoolDestinoId(f.getPoolDestino().getId());
+        dto.setEtiqueta(f.getEtiqueta());
+        return dto;
+    }
+}

@@ -27,6 +27,8 @@ public class ProcesoServiceImpl implements ProcesoService {
     private final ActividadService actividadService;
     private final GatewayService gatewayService;
     private final ArcoService arcoService;
+    private final EventoMensajeService eventoMensajeService;
+    private final FlujoMensajeService flujoMensajeService;
 
     public ProcesoServiceImpl(
             ProcesoRepository procesoRepository,
@@ -36,7 +38,9 @@ public class ProcesoServiceImpl implements ProcesoService {
             LaneService laneService,
             ActividadService actividadService,
             GatewayService gatewayService,
-            ArcoService arcoService) {
+            ArcoService arcoService,
+            EventoMensajeService eventoMensajeService,   
+            FlujoMensajeService flujoMensajeService) {   
 
         this.procesoRepository = procesoRepository;
         this.empresaRepository = empresaRepository;
@@ -46,6 +50,8 @@ public class ProcesoServiceImpl implements ProcesoService {
         this.actividadService = actividadService;
         this.gatewayService = gatewayService;
         this.arcoService = arcoService;
+        this.eventoMensajeService = eventoMensajeService;  
+        this.flujoMensajeService = flujoMensajeService;    
     }
 
     @Override
@@ -328,6 +334,18 @@ public class ProcesoServiceImpl implements ProcesoService {
                         empresaId
                 );
 
+        List<EventoMensajeResponseDTO> eventosMensaje =
+                eventoMensajeService.listarPorProceso(
+                        procesoId,
+                        empresaId
+                );
+
+        List<FlujoMensajeResponseDTO> flujosMensaje =
+                flujoMensajeService.listarPorProceso(
+                        procesoId,
+                        empresaId
+                );
+
         return new ProcesoDetalleDTO(
                 proceso.getId(),
                 proceso.getNombre(),
@@ -338,7 +356,9 @@ public class ProcesoServiceImpl implements ProcesoService {
                 lanes,
                 actividades,
                 gateways,
-                arcos
+                arcos,
+                eventosMensaje,  
+                flujosMensaje    
         );
     }
 
